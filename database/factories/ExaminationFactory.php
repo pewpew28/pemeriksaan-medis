@@ -82,7 +82,17 @@ class ExaminationFactory extends Factory
         }
 
         // Tentukan status pemeriksaan secara acak
-        $statusOptions = ['pending', 'scheduled', 'completed', 'cancelled'];
+        $statusOptions = [
+            'created', // Initial state when examination is first recorded
+            'pending_payment',
+            'pending_cash_payment',
+            'paid',
+            'expired_payment',
+            'scheduled',
+            'in_progress', // New state for when examination is actually happening
+            'completed',
+            'cancelled'
+        ];
         $status = $this->faker->randomElement($statusOptions);
 
         // Tentukan status hasil pemeriksaan berdasarkan status utama

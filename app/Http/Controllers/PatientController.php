@@ -216,7 +216,7 @@ class PatientController extends Controller
         $examination = new Examination($validatedData);
         $examination->id = (string) Str::uuid(); // Generate UUID for examination
         $examination->patient_id = $patient->id;
-        $examination->status = 'pending';
+        $examination->status = 'created';
         $examination->result_available = false;
         $examination->payment_status = 'pending';
         $examination->final_price = $serviceItem->price; // Simpan harga dari service item

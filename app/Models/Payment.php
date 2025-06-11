@@ -9,23 +9,29 @@ class Payment extends Model
 {
     use HasFactory;
 
+    // app/Models/Payment.php
     protected $fillable = [
         'examination_id',
-        'xendit_id',
-        'method',
-        'status',
         'amount',
+        'method', // Pastikan ini 'method' bukan 'payment_method'
+        'status',
+        'xendit_id',
         'currency',
+        'transaction_id',
+        'reference_code',
         'qr_string',
         'qr_code_url',
         'bank_code',
         'account_number',
         'account_name',
+        'notes',
+        'paid_at',
         'expiry_time',
-        'reference_code',
     ];
 
+    // Tambahkan casting untuk kolom-kolom timestamp jika diperlukan
     protected $casts = [
+        'paid_at' => 'datetime',
         'expiry_time' => 'datetime',
     ];
 

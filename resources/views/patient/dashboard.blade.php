@@ -124,122 +124,158 @@
 
             {{-- Recent Examinations Section --}}
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 mb-8">
-                <div class="p-6 border-b border-gray-200">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center">
-                            <i class="fas fa-stethoscope text-blue-600 mr-3"></i>
-                            <h2 class="text-2xl font-bold text-gray-900">Pemeriksaan Terbaru</h2>
+    <div class="p-6 border-b border-gray-200">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center">
+                <i class="fas fa-stethoscope text-blue-600 mr-3"></i>
+                <h2 class="text-2xl font-bold text-gray-900">Pemeriksaan Terbaru</h2>
+            </div>
+            {{-- Only show "Lihat Semua" if there are examinations --}}
+            @if ($recentExaminations->isNotEmpty())
+                <a href="{{ route('pasien.examinations.index') }}"
+                   class="text-blue-600 hover:text-blue-800 font-semibold text-sm flex items-center">
+                    Lihat Semua
+                    <i class="fas fa-arrow-right ml-2"></i>
+                </a>
+            @endif
+        </div>
+    </div>
+
+    <div class="p-6">
+        @forelse ($recentExaminations as $examination)
+            @if ($loop->first)
+                <div class="overflow-x-auto">
+                    <table class="min-w-full">
+                        <thead>
+                            <tr class="border-b border-gray-200">
+                                <th class="text-left py-4 px-4 font-semibold text-gray-700">Jenis Pemeriksaan</th>
+                                <th class="text-left py-4 px-4 font-semibold text-gray-700">Jadwal</th>
+                                <th class="text-left py-4 px-4 font-semibold text-gray-700">Status</th>
+                                <th class="text-left py-4 px-4 font-semibold text-gray-700">Pembayaran</th>
+                                <th class="text-left py-4 px-4 font-semibold text-gray-700">Harga</th>
+                                <th class="text-left py-4 px-4 font-semibold text-gray-700">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200">
+            @endif
+            
+            <tr class="hover:bg-gray-50 transition-colors duration-150">
+                <td class="py-4 px-4">
+                    <div class="font-semibold text-gray-900">
+                        {{-- Assuming you need to add serviceItem relationship to Examination model --}}
+                        {{ $examination->serviceItem->name ?? 'Pemeriksaan Umum' }}
+                    </div>
+                    @if ($examination->pickup_requested)
+                        <div class="text-xs text-blue-600 mt-1">
+                            <i class="fas fa-car mr-1"></i>
+                            Dengan Penjemputan
                         </div>
-                        @if ($recentExaminations && $recentExaminations->count() > 0)
-                            <a href="{{ route('pasien.examinations.index') }}"
-                                class="text-blue-600 hover:text-blue-800 font-semibold text-sm flex items-center">
-                                Lihat Semua
-                                <i class="fas fa-arrow-right ml-2"></i>
+                    @endif
+                </td>
+                <td class="py-4 px-4">
+                    @if ($examination->scheduled_date)
+                        <div class="text-gray-900">
+                            {{ \Carbon\Carbon::parse($examination->scheduled_date)->format('d M Y') }}
+                        </div>
+                        @if ($examination->scheduled_time)
+                            <div class="text-sm text-gray-600">
+                                {{ \Carbon\Carbon::parse($examination->scheduled_time)->format('H:i') }} WIB
+                            </div>
+                        @endif
+                    @else
+                        <div class="text-sm text-gray-500">
+                            Belum Dijadwalkan
+                        </div>
+                    @endif
+                </td>
+                <td class="py-4 px-4">
+                    @php
+                        $statusConfig = [
+                            'created' => ['class' => 'bg-gray-100 text-gray-800', 'icon' => 'fas fa-plus-circle', 'label' => 'Dibuat'],
+                            'pending_payment' => ['class' => 'bg-yellow-100 text-yellow-800', 'icon' => 'fas fa-credit-card', 'label' => 'Menunggu Pembayaran'],
+                            'pending_cash_payment' => ['class' => 'bg-orange-100 text-orange-800', 'icon' => 'fas fa-money-bill', 'label' => 'Bayar di Klinik'],
+                            'paid' => ['class' => 'bg-green-100 text-green-800', 'icon' => 'fas fa-check-circle', 'label' => 'Lunas'],
+                            'expired_payment' => ['class' => 'bg-red-100 text-red-800', 'icon' => 'fas fa-exclamation-triangle', 'label' => 'Pembayaran Kadaluarsa'],
+                            'scheduled' => ['class' => 'bg-blue-100 text-blue-800', 'icon' => 'fas fa-calendar-check', 'label' => 'Terjadwal'],
+                            'in_progress' => ['class' => 'bg-purple-100 text-purple-800', 'icon' => 'fas fa-spinner', 'label' => 'Sedang Berlangsung'],
+                            'completed' => ['class' => 'bg-green-100 text-green-800', 'icon' => 'fas fa-check', 'label' => 'Selesai'],
+                            'cancelled' => ['class' => 'bg-red-100 text-red-800', 'icon' => 'fas fa-times', 'label' => 'Dibatalkan'],
+                        ];
+                        $currentStatus = $statusConfig[$examination->status] ?? $statusConfig['created'];
+                    @endphp
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold {{ $currentStatus['class'] }}">
+                        <i class="{{ $currentStatus['icon'] }} mr-1"></i>
+                        {{ $currentStatus['label'] }}
+                    </span>
+                </td>
+                <td class="py-4 px-4">
+                    @php
+                        $paymentStatusConfig = [
+                            'pending' => ['class' => 'bg-yellow-100 text-yellow-800', 'icon' => 'fas fa-hourglass-half', 'label' => 'Menunggu'],
+                            'paid' => ['class' => 'bg-green-100 text-green-800', 'icon' => 'fas fa-check-circle', 'label' => 'Lunas'],
+                            'failed' => ['class' => 'bg-red-100 text-red-800', 'icon' => 'fas fa-times-circle', 'label' => 'Gagal'],
+                        ];
+                        $currentPaymentStatus = $paymentStatusConfig[$examination->payment_status] ?? $paymentStatusConfig['pending'];
+                    @endphp
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold {{ $currentPaymentStatus['class'] }}">
+                        <i class="{{ $currentPaymentStatus['icon'] }} mr-1"></i>
+                        {{ $currentPaymentStatus['label'] }}
+                    </span>
+                    @if ($examination->payment_method)
+                        <div class="text-xs text-gray-500 mt-1">
+                            {{ $examination->payment_method }}
+                        </div>
+                    @endif
+                </td>
+                <td class="py-4 px-4">
+                    <div class="font-semibold text-gray-900">
+                        Rp {{ number_format($examination->final_price, 0, ',', '.') }}
+                    </div>
+                </td>
+                <td class="py-4 px-4">
+                    <div class="flex items-center space-x-3">
+                        <a href="{{ route('pasien.examinations.show', $examination->id) }}"
+                           class="text-blue-600 hover:text-blue-800 font-medium text-sm">
+                            Detail
+                        </a>
+                        @if ($examination->result_available)
+                            <a href="{{ route('pasien.result.download', $examination->id) }}"
+                               class="text-green-600 hover:text-green-800 font-medium text-sm flex items-center">
+                                <i class="fas fa-download mr-1"></i>
+                                Hasil
+                            </a>
+                        @endif
+                        @if (in_array($examination->status, ['created', 'pending_payment', 'pending_cash_payment']) && $examination->payment_status === 'pending')
+                            <a href="{{ route('pasien.payment.show', $examination->id) }}"
+                               class="text-orange-600 hover:text-orange-800 font-medium text-sm flex items-center">
+                                <i class="fas fa-credit-card mr-1"></i>
+                                Bayar
                             </a>
                         @endif
                     </div>
+                </td>
+            </tr>
+            
+            @if ($loop->last)
+                        </tbody>
+                    </table>
                 </div>
-
-                <div class="p-6">
-                    @if ($recentExaminations && $recentExaminations->count() > 0)
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full">
-                                <thead>
-                                    <tr class="border-b border-gray-200">
-                                        <th class="text-left py-4 px-4 font-semibold text-gray-700">Jenis Pemeriksaan
-                                        </th>
-                                        <th class="text-left py-4 px-4 font-semibold text-gray-700">Jadwal</th>
-                                        <th class="text-left py-4 px-4 font-semibold text-gray-700">Status</th>
-                                        <th class="text-left py-4 px-4 font-semibold text-gray-700">Pembayaran</th>
-                                        <th class="text-left py-4 px-4 font-semibold text-gray-700">Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-200">
-                                    @foreach ($recentExaminations as $examination)
-                                        <tr class="hover:bg-gray-50 transition-colors duration-150">
-                                            <td class="py-4 px-4">
-                                                <div class="font-semibold text-gray-900">
-                                                    {{ $examination->serviceItem->name }}</div>
-                                            </td>
-                                            <td class="py-4 px-4">
-                                                <div class="text-gray-900">
-                                                    {{ \Carbon\Carbon::parse($examination->scheduled_date)->format('d M Y') }}
-                                                </div>
-                                                <div class="text-sm text-gray-600">
-                                                    {{ \Carbon\Carbon::parse($examination->scheduled_time)->format('H:i') }}
-                                                    WIB
-                                                </div>
-                                            </td>
-                                            <td class="py-4 px-4">
-                                                <span
-                                                    class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold
-                                                    @if ($examination->status == 'pending') bg-yellow-100 text-yellow-800
-                                                    @elseif($examination->status == 'scheduled') bg-blue-100 text-blue-800
-                                                    @elseif($examination->status == 'completed') bg-green-100 text-green-800
-                                                    @else bg-red-100 text-red-800 @endif">
-                                                    @if ($examination->status == 'pending')
-                                                        <i class="fas fa-clock mr-1"></i>
-                                                    @elseif($examination->status == 'scheduled')
-                                                        <i class="fas fa-calendar-check mr-1"></i>
-                                                    @elseif($examination->status == 'completed')
-                                                        <i class="fas fa-check mr-1"></i>
-                                                    @else
-                                                        <i class="fas fa-times mr-1"></i>
-                                                    @endif
-                                                    {{ ucfirst($examination->status) }}
-                                                </span>
-                                            </td>
-                                            <td class="py-4 px-4">
-                                                <span
-                                                    class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold
-                                                    @if ($examination->payment_status == 'pending') bg-yellow-100 text-yellow-800
-                                                    @elseif($examination->payment_status == 'paid') bg-green-100 text-green-800
-                                                    @else bg-red-100 text-red-800 @endif">
-                                                    @if ($examination->payment_status == 'pending')
-                                                        <i class="fas fa-hourglass-half mr-1"></i>
-                                                    @elseif($examination->payment_status == 'paid')
-                                                        <i class="fas fa-check-circle mr-1"></i>
-                                                    @else
-                                                        <i class="fas fa-times-circle mr-1"></i>
-                                                    @endif
-                                                    {{ ucfirst($examination->payment_status) }}
-                                                </span>
-                                            </td>
-                                            <td class="py-4 px-4">
-                                                <div class="flex items-center space-x-3">
-                                                    <a href="{{ route('pasien.examinations.show', $examination->id) }}"
-                                                        class="text-blue-600 hover:text-blue-800 font-medium text-sm">
-                                                        Detail
-                                                    </a>
-                                                    @if ($examination->result_available)
-                                                        <a href="{{ route('pasien.result.download', $examination->id) }}"
-                                                            class="text-green-600 hover:text-green-800 font-medium text-sm flex items-center">
-                                                            <i class="fas fa-download mr-1"></i>
-                                                            Hasil
-                                                        </a>
-                                                    @endif
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                    @else
-                        <div class="text-center py-12">
-                            <i class="fas fa-clipboard-list text-gray-400 text-5xl mb-4"></i>
-                            <h3 class="text-lg font-semibold text-gray-900 mb-2">Belum Ada Pemeriksaan</h3>
-                            <p class="text-gray-600 mb-6">Anda belum memiliki riwayat pemeriksaan. Mulai daftar
-                                pemeriksaan pertama Anda.</p>
-                            <a href="{{ route('pasien.examination.register.form') }}"
-                                class="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200">
-                                <i class="fas fa-plus mr-2"></i>
-                                Daftar Pemeriksaan
-                            </a>
-                        </div>
-                    @endif
-                </div>
+            @endif
+        @empty
+            {{-- This block runs if $recentExaminations is empty or null --}}
+            <div class="text-center py-12">
+                <i class="fas fa-clipboard-list text-gray-400 text-5xl mb-4"></i>
+                <h3 class="text-lg font-semibold text-gray-900 mb-2">Belum Ada Pemeriksaan</h3>
+                <p class="text-gray-600 mb-6">Anda belum memiliki riwayat pemeriksaan. Mulai daftar pemeriksaan pertama Anda.</p>
+                <a href="{{ route('pasien.examination.register.form') }}"
+                   class="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200">
+                    <i class="fas fa-plus mr-2"></i>
+                    Daftar Pemeriksaan
+                </a>
             </div>
+        @endforelse
+    </div>
+</div>
 
             {{-- Quick Actions Section --}}
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 mb-8">

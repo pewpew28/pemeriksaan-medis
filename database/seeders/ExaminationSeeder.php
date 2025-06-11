@@ -16,26 +16,27 @@ class ExaminationSeeder extends Seeder
         $patients = Patient::all();
 
         foreach ($patients as $patient) {
-            // Buat 1-3 pemeriksaan untuk setiap pasien
-            Examination::factory(rand(1, 3))->create([
-                'patient_id' => $patient->id,
-                'status' => 'pending', // Default status
-                'payment_status' => 'pending', // Default payment status
-            ]);
+            // Buat 1-3 pemeriksaan dengan status acak dari factory default
+            Examination::factory()
+                ->count(rand(1, 3))
+                ->for($patient)
+                ->create();
         }
 
-        // Ambil beberapa pemeriksaan dan ubah statusnya menjadi 'completed'
-        // untuk tujuan testing fitur unduh hasil
-        Examination::inRandomOrder()->limit(5)->get()->each(function ($examination) {
-            $examination->update([
-                'status' => 'completed',
-                'result_available' => true,
-                'payment_status' => 'paid',
-            ]);
-            // Jika ingin menambahkan media dummy (file PDF), bisa di sini
-            // $examination->addMedia(database_path('seed_files/dummy_result.pdf')) // Pastikan file ini ada
-            //             ->preservingOriginal()
-            //             ->toMediaCollection('results');
+        // Buat tambahan 5 pemeriksaan yang selesai (completed) untuk keperluan testing hasil
+        Examination::factory()
+            ->count(5)
+            ->completed()
+            ->create();
+
+        // Jika ingin menambahkan file hasil (PDF dummy), bisa ditambahkan di sini
+        // asalkan kamu sudah setup MediaLibrary (Spatie) dengan collection 'results'.
+        /*
+        Examination::completed()->get()->each(function ($examination) {
+            $examination->addMedia(database_path('seed_files/dummy_result.pdf'))
+                        ->preservingOriginal()
+                        ->toMediaCollection('results');
         });
+        */
     }
 }

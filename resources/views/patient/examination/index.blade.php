@@ -52,7 +52,7 @@
             @if (session('error'))
                 <div class="mb-6 flex items-center p-4 bg-red-50 border border-red-200 rounded-lg">
                     <svg class="w-5 h-5 text-red-400 mr-3" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
                     </svg>
                     <div class="text-red-800 font-medium">{{ session('error') }}</div>
                 </div>
@@ -95,7 +95,7 @@
                                 </div>
                             </div>
                             <div class="ml-4">
-                                <p class="text-sm font-medium text-gray-500">Selesai</p>
+                                <p class="text-sm font-medium text-gray-500">Selesai (Completed)</p>
                                 <p class="text-2xl font-bold text-gray-900">{{ $examinations->where('status', 'completed')->count() }}</p>
                             </div>
                         </div>
@@ -113,8 +113,8 @@
                                 </div>
                             </div>
                             <div class="ml-4">
-                                <p class="text-sm font-medium text-gray-500">Menunggu</p>
-                                <p class="text-2xl font-bold text-gray-900">{{ $examinations->whereIn('status', ['pending', 'scheduled'])->count() }}</p>
+                                <p class="text-sm font-medium text-gray-500">Menunggu (Pending)</p>
+                                <p class="text-2xl font-bold text-gray-900">{{ $examinations->whereIn('status', ['created', 'pending_payment', 'pending_cash_payment', 'scheduled', 'in_progress'])->count() }}</p>
                             </div>
                         </div>
                     </div>
@@ -146,13 +146,20 @@
                         <h3 class="text-lg font-semibold text-gray-900">Daftar Pemeriksaan</h3>
                         {{-- Filter Options --}}
                         <div class="flex items-center space-x-3">
-                            <select class="text-sm border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
-                                <option value="">Semua Status</option>
-                                <option value="pending">Pending</option>
-                                <option value="scheduled">Terjadwal</option>
-                                <option value="completed">Selesai</option>
-                                <option value="cancelled">Dibatalkan</option>
+                            {{-- Consider making this a form that submits or using Livewire for dynamic filtering --}}
+                            <select class="text-sm border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" onchange="window.location.href = this.value;">
+                                <option value="{{ route('pasien.examinations.index') }}">Semua Status</option>
+                                <option value="{{ route('pasien.examinations.index', ['status' => 'created']) }}" @if(request('status') == 'created') selected @endif>Baru Dibuat</option>
+                                <option value="{{ route('pasien.examinations.index', ['status' => 'pending_payment']) }}" @if(request('status') == 'pending_payment') selected @endif>Menunggu Pembayaran Online</option>
+                                <option value="{{ route('pasien.examinations.index', ['status' => 'pending_cash_payment']) }}" @if(request('status') == 'pending_cash_payment') selected @endif>Menunggu Pembayaran Tunai</option>
+                                <option value="{{ route('pasien.examinations.index', ['status' => 'paid']) }}" @if(request('status') == 'paid') selected @endif>Sudah Dibayar</option>
+                                <option value="{{ route('pasien.examinations.index', ['status' => 'expired_payment']) }}" @if(request('status') == 'expired_payment') selected @endif>Pembayaran Kadaluarsa</option>
+                                <option value="{{ route('pasien.examinations.index', ['status' => 'scheduled']) }}" @if(request('status') == 'scheduled') selected @endif>Terjadwal</option>
+                                <option value="{{ route('pasien.examinations.index', ['status' => 'in_progress']) }}" @if(request('status') == 'in_progress') selected @endif>Sedang Berjalan</option>
+                                <option value="{{ route('pasien.examinations.index', ['status' => 'completed']) }}" @if(request('status') == 'completed') selected @endif>Selesai</option>
+                                <option value="{{ route('pasien.examinations.index', ['status' => 'cancelled']) }}" @if(request('status') == 'cancelled') selected @endif>Dibatalkan</option>
                             </select>
+                            {{-- You might want to implement a search input here as well --}}
                             <button class="text-gray-400 hover:text-gray-600 p-2 rounded-lg hover:bg-gray-100">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
@@ -169,9 +176,9 @@
                                 <tr>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID & Pemeriksaan</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jadwal</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status Pemeriksaan</th> {{-- Changed for clarity --}}
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hasil</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pembayaran</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status Pembayaran</th> {{-- Changed for clarity --}}
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                                 </tr>
                             </thead>
@@ -182,32 +189,54 @@
                                             <div class="flex items-center">
                                                 <div class="flex-shrink-0 h-10 w-10">
                                                     <div class="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                                                        {{-- You might want to display an icon related to the service item here --}}
                                                     </div>
                                                 </div>
                                                 <div class="ml-4">
-                                                    <div class="text-sm font-medium text-gray-900">{{ $examination->serviceItem->name }}</div>
+                                                    <div class="text-sm font-medium text-gray-900">{{ $examination->serviceItem->name ?? 'N/A' }}</div> {{-- Added null coalescing for safety --}}
                                                     <div class="text-xs text-gray-500">ID: {{ $examination->id }}</div>
                                                 </div>
                                             </div>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <div class="text-sm text-gray-900">
-                                                {{ \Carbon\Carbon::parse($examination->scheduled_date)->format('d M Y') }}
+                                                {{ $examination->scheduled_date ? \Carbon\Carbon::parse($examination->scheduled_date)->format('d M Y') : 'Belum Dijadwalkan' }}
                                             </div>
                                             <div class="text-sm text-gray-500">
-                                                {{ \Carbon\Carbon::parse($examination->scheduled_time)->format('H:i') }} WIB
+                                                {{ $examination->scheduled_time ? \Carbon\Carbon::parse($examination->scheduled_time)->format('H:i') . ' WIB' : '' }}
                                             </div>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
-                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                                                @if($examination->status == 'pending') bg-yellow-100 text-yellow-800
-                                                @elseif($examination->status == 'scheduled') bg-blue-100 text-blue-800
-                                                @elseif($examination->status == 'completed') bg-green-100 text-green-800
-                                                @else bg-red-100 text-red-800 @endif">
+                                            @php
+                                                $statusClass = '';
+                                                switch ($examination->status) {
+                                                    case 'created':
+                                                    case 'pending_payment':
+                                                    case 'pending_cash_payment':
+                                                        $statusClass = 'bg-yellow-100 text-yellow-800';
+                                                        break;
+                                                    case 'scheduled':
+                                                    case 'in_progress':
+                                                        $statusClass = 'bg-blue-100 text-blue-800';
+                                                        break;
+                                                    case 'paid':
+                                                    case 'completed':
+                                                        $statusClass = 'bg-green-100 text-green-800';
+                                                        break;
+                                                    case 'cancelled':
+                                                    case 'expired_payment':
+                                                        $statusClass = 'bg-red-100 text-red-800';
+                                                        break;
+                                                    default:
+                                                        $statusClass = 'bg-gray-100 text-gray-800';
+                                                        break;
+                                                }
+                                            @endphp
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $statusClass }}">
                                                 <svg class="w-1.5 h-1.5 mr-1" fill="currentColor" viewBox="0 0 8 8">
                                                     <circle cx="4" cy="4" r="3"/>
                                                 </svg>
-                                                {{ ucfirst($examination->status) }}
+                                                {{ ucfirst(str_replace('_', ' ', $examination->status)) }} {{-- Format status string --}}
                                             </span>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
@@ -228,10 +257,24 @@
                                             @endif
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
-                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                                                @if($examination->payment_status == 'pending') bg-yellow-100 text-yellow-800
-                                                @elseif($examination->payment_status == 'paid') bg-green-100 text-green-800
-                                                @else bg-red-100 text-red-800 @endif">
+                                            @php
+                                                $paymentStatusClass = '';
+                                                switch ($examination->payment_status) {
+                                                    case 'pending':
+                                                        $paymentStatusClass = 'bg-yellow-100 text-yellow-800';
+                                                        break;
+                                                    case 'paid':
+                                                        $paymentStatusClass = 'bg-green-100 text-green-800';
+                                                        break;
+                                                    case 'failed':
+                                                        $paymentStatusClass = 'bg-red-100 text-red-800';
+                                                        break;
+                                                    default:
+                                                        $paymentStatusClass = 'bg-gray-100 text-gray-800';
+                                                        break;
+                                                }
+                                            @endphp
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $paymentStatusClass }}">
                                                 <svg class="w-1.5 h-1.5 mr-1" fill="currentColor" viewBox="0 0 8 8">
                                                     <circle cx="4" cy="4" r="3"/>
                                                 </svg>
@@ -269,33 +312,7 @@
                             </tbody>
                         </table>
                     </div>
-                    {{-- {{ dd($examinations) }} --}}
-                    {{-- Enhanced Pagination - Only show if using paginated results
-                    @if(method_exists($examinations, 'links'))
-                        <div class="bg-white px-6 py-4 border-t border-gray-200">
-                            <div class="flex items-center justify-between">
-                                <div class="flex-1 flex justify-between sm:hidden">
-                                    {{ $examinations->simplePaginate() }}
-                                </div>
-                                <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                                    <div>
-                                        <p class="text-sm text-gray-700">
-                                            Menampilkan
-                                            <span class="font-medium">{{ $examinations->firstItem() ?? 0 }}</span>
-                                            sampai
-                                            <span class="font-medium">{{ $examinations->lastItem() ?? 0 }}</span>
-                                            dari
-                                            <span class="font-medium">{{ $examinations->total() }}</span>
-                                            hasil
-                                        </p>
-                                    </div>
-                                    <div>
-                                        {{ $examinations->links() }}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    @endif --}}
+                   
                 @else
                     {{-- Enhanced Empty State --}}
                     <div class="text-center py-16">
@@ -316,7 +333,7 @@
                                 </svg>
                                 Daftar Pemeriksaan Baru
                             </a>
-                            <a href="{{ route('patient.dashboard') }}" 
+                            <a href="{{ route('pasien.dashboard') }}" 
                                class="inline-flex items-center px-6 py-3 bg-white border border-gray-300 rounded-lg font-semibold text-sm text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-150 ease-in-out">
                                 Kembali ke Dashboard
                             </a>

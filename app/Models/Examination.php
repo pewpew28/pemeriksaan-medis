@@ -2,28 +2,28 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Spatie\MediaLibrary\HasMedia; // Tambahkan ini
-use Spatie\MediaLibrary\InteractsWithMedia; // Tambahkan ini
+use Illuminate\Support\Str; // Untuk UUID
 
-class Examination extends Model implements HasMedia // Implementasikan HasMedia
+class Examination extends Model
 {
-    use HasFactory, InteractsWithMedia, HasUuids; // Gunakan InteractsWithMedia    
-    protected $keyType = 'string';
-    public $incrementing = false;
+    use HasFactory;
+
+    protected $keyType = 'string'; // Penting: karena ID adalah UUID
+    public $incrementing = false; // Penting: karena ID bukan auto-incrementing integer
+
     protected $fillable = [
         'patient_id',
-        // 'examination_type',
-        'service_item_id',
+        'service_item_id', // Tambahkan ini
+        'service_item_name', // Tambahkan ini
         'scheduled_date',
         'scheduled_time',
         'pickup_requested',
         'pickup_address',
         'pickup_location_map',
         'pickup_time',
-        'status',
+        'status', // Pastikan ini di-fillable
         'notes',
         'result_available',
         'payment_status',
@@ -32,29 +32,40 @@ class Examination extends Model implements HasMedia // Implementasikan HasMedia
     ];
 
     protected $casts = [
-        'scheduled_date' => 'date',
-        'scheduled_time' => 'datetime', // atau 'string' jika hanya menyimpan jam
-        'pickup_time' => 'datetime',    // atau 'string' jika hanya menyimpan jam
         'pickup_requested' => 'boolean',
         'result_available' => 'boolean',
-        'final_price' => 'decimal:2',
+        'scheduled_date' => 'date',
+        'scheduled_time' => 'datetime', // Cast sebagai datetime untuk Carbon
+        'pickup_time' => 'datetime', // Cast sebagai datetime untuk Carbon
     ];
 
-    // Relasi ke Patient
+    // Override the boot method to set UUID on creation
+    protected static function boot()
+    {
+        parent::boot();
+        static::creating(function ($model) {
+            if (empty($model->{$model->getKeyName()})) {
+                $model->{$model->getKeyName()} = (string) Str::uuid();
+            }
+        });
+    }
+
     public function patient()
     {
         return $this->belongsTo(Patient::class);
     }
 
-    public function serviceItem() // Relasi baru ke ServiceItem
+    public function serviceItem() // Pastikan ada relasi ini
     {
         return $this->belongsTo(ServiceItem::class);
     }
 
-    // Konfigurasi Media Collection (Opsional tapi Direkomendasikan untuk Media Library)
-    public function registerMediaCollections(): void
+    // Jika Anda mengakses $examination->service_item_price dan $examination->service_item_name
+    // di blade, pastikan ini ada atau relasi serviceItem() di atas diatur dengan benar.
+    // Jika service_item_name dan final_price disimpan di examinations, maka getter ini tidak diperlukan
+    // kecuali Anda ingin membungkusnya.
+    public function getServiceItemPriceAttribute()
     {
-        $this->addMediaCollection('results')
-            ->useDisk('public'); // Pastikan ini menunjuk ke disk 'public'
+        return $this->final_price; // Mengambil dari final_price yang sudah disimpan
     }
 }
