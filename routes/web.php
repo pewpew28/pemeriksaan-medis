@@ -66,7 +66,8 @@ Route::middleware(['auth', 'role:pasien'])->prefix('pasien')->name('pasien.')->g
 
     // Pembayaran (sederhana)
     Route::get('/pembayaran/{examination}', [PatientController::class, 'showPaymentDetails'])->name('payment.show');
-
+    Route::get('/pembayaran/{examination}/success', [PaymentController::class, 'paymentSuccess'])->name('payment.success');
+    Route::get('/pembayaran/{examination}/failed', [PaymentController::class, 'paymentFailed'])->name('payment.failed');
     // Mungkin ada POST route untuk update status pembayaran (jika manual oleh pasien)
 });
 

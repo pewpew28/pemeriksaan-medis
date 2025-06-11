@@ -306,16 +306,11 @@ class PatientController extends Controller
             abort(403, 'Akses ditolak. Pemeriksaan ini bukan milik Anda.');
         }
 
-        // Logic untuk menampilkan kode QRIS (gambar statis) atau instruksi pembayaran cash
-        $qrisImagePath = 'images/qris_perusahaan.png'; // Pastikan path ini benar
-        if (!Storage::disk('public')->exists($qrisImagePath)) {
-            // Jika gambar QRIS tidak ada, Anda bisa memberikan pesan error atau default
-            $qrisImagePath = null;
-        } else {
-            $qrisImagePath = Storage::disk('public')->url($qrisImagePath);
-        }
+        // $examination sudah di-resolve oleh Route Model Binding
+        // Anda bisa mengambil data payment terkait jika perlu
+        $payment = $examination->payments()->latest()->first();
 
-        return view('patient.examination.payment', compact('examination', 'qrisImagePath'));
+        return view('patient.examination.payment', compact('examination', 'payment'));
     }
 
     private function formatPhoneNumber($phoneNumber)
