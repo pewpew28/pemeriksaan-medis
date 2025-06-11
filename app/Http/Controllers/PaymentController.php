@@ -175,7 +175,7 @@ class PaymentController extends Controller
 
             // Update examination status to completed
             if (!in_array($examination->status, ['completed', 'paid'])) {
-                $examination->update(['status' => 'completed', 'payment_status' => 'paid' ]);
+                $examination->update(['status' => 'completed', 'payment_status' => 'paid']);
 
                 Log::info('Examination status updated to completed', [
                     'examination_id' => $examinationId,
@@ -261,5 +261,31 @@ class PaymentController extends Controller
 
             return redirect()->route('pasien.dashboard')->with('error', 'Terjadi kesalahan saat memproses pembayaran yang gagal.');
         }
+    }
+
+    public function updatePaymentMethod(Request $request)
+    {
+        $request->validate([
+            'examination_id' => 'required|exists:examinations,id',
+            'payment_method' => 'required|in:online,cash'
+        ]);
+
+        $examination = Examination::findOrFail($request->examination_id);
+        $examination->update([
+            'payment_method' => $request->payment_method,
+            'payment_status' => $request->payment_method === 'cash' ? 'pending' : 'pending'
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'Payment method updated']);
+    }
+
+    public function confirmCashPayment(Examination $examination)
+    {
+        $examination->update([
+            'payment_method' => 'cash',
+            'payment_status' => 'pending' // atau 'confirmed' jika langsung dikonfirmasi
+        ]);
+
+        return redirect()->back()->with('success', 'Pilihan pembayaran tunai telah dicatat. Silakan bayar di kasir klinik.');
     }
 }
