@@ -1,19 +1,4 @@
 <x-patient-layout>
-    {{-- Header Section
-    <x-slot name="header">
-        <div class="bg-gradient-to-r from-blue-600 to-indigo-700 shadow-lg">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-                <div class="flex items-center justify-between">
-                    <h1 class="text-2xl font-bold text-white">Dashboard Pasien</h1>
-                    <div class="text-white text-sm">
-                        <i class="fas fa-calendar-alt mr-2"></i>
-                        {{ now()->format('d F Y') }}
-                    </div>
-                </div>
-            </div>
-        </div>
-    </x-slot> --}}
-
     <div class="min-h-screen bg-gray-50 py-8">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
@@ -30,8 +15,7 @@
                             </p>
                         </div>
                         <div class="hidden md:block">
-                            <div
-                                class="w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center">
+                            <div class="w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center">
                                 <i class="fas fa-user-md text-white text-2xl"></i>
                             </div>
                         </div>
@@ -56,16 +40,14 @@
                                     <i class="fas fa-envelope text-blue-500 mr-3"></i>
                                     <div>
                                         <p class="text-sm text-gray-600">Email</p>
-                                        <p class="font-semibold text-gray-900">{{ $patient->email ?? 'Belum diisi' }}
-                                        </p>
+                                        <p class="font-semibold text-gray-900">{{ $patient->email ?? 'Belum diisi' }}</p>
                                     </div>
                                 </div>
                                 <div class="flex items-center">
                                     <i class="fas fa-phone text-blue-500 mr-3"></i>
                                     <div>
                                         <p class="text-sm text-gray-600">No. Telepon</p>
-                                        <p class="font-semibold text-gray-900">
-                                            {{ $patient->phone_number ?? 'Belum diisi' }}</p>
+                                        <p class="font-semibold text-gray-900">{{ $patient->phone_number ?? 'Belum diisi' }}</p>
                                     </div>
                                 </div>
                             </div>
@@ -124,158 +106,201 @@
 
             {{-- Recent Examinations Section --}}
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 mb-8">
-    <div class="p-6 border-b border-gray-200">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center">
-                <i class="fas fa-stethoscope text-blue-600 mr-3"></i>
-                <h2 class="text-2xl font-bold text-gray-900">Pemeriksaan Terbaru</h2>
-            </div>
-            {{-- Only show "Lihat Semua" if there are examinations --}}
-            @if ($recentExaminations->isNotEmpty())
-                <a href="{{ route('pasien.examinations.index') }}"
-                   class="text-blue-600 hover:text-blue-800 font-semibold text-sm flex items-center">
-                    Lihat Semua
-                    <i class="fas fa-arrow-right ml-2"></i>
-                </a>
-            @endif
-        </div>
-    </div>
-
-    <div class="p-6">
-        @forelse ($recentExaminations as $examination)
-            @if ($loop->first)
-                <div class="overflow-x-auto">
-                    <table class="min-w-full">
-                        <thead>
-                            <tr class="border-b border-gray-200">
-                                <th class="text-left py-4 px-4 font-semibold text-gray-700">Jenis Pemeriksaan</th>
-                                <th class="text-left py-4 px-4 font-semibold text-gray-700">Jadwal</th>
-                                <th class="text-left py-4 px-4 font-semibold text-gray-700">Status</th>
-                                <th class="text-left py-4 px-4 font-semibold text-gray-700">Pembayaran</th>
-                                <th class="text-left py-4 px-4 font-semibold text-gray-700">Harga</th>
-                                <th class="text-left py-4 px-4 font-semibold text-gray-700">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-200">
-            @endif
-            
-            <tr class="hover:bg-gray-50 transition-colors duration-150">
-                <td class="py-4 px-4">
-                    <div class="font-semibold text-gray-900">
-                        {{-- Assuming you need to add serviceItem relationship to Examination model --}}
-                        {{ $examination->serviceItem->name ?? 'Pemeriksaan Umum' }}
-                    </div>
-                    @if ($examination->pickup_requested)
-                        <div class="text-xs text-blue-600 mt-1">
-                            <i class="fas fa-car mr-1"></i>
-                            Dengan Penjemputan
+                <div class="p-6 border-b border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <i class="fas fa-stethoscope text-blue-600 mr-3"></i>
+                            <h2 class="text-2xl font-bold text-gray-900">Pemeriksaan Terbaru</h2>
                         </div>
-                    @endif
-                </td>
-                <td class="py-4 px-4">
-                    @if ($examination->scheduled_date)
-                        <div class="text-gray-900">
-                            {{ \Carbon\Carbon::parse($examination->scheduled_date)->format('d M Y') }}
-                        </div>
-                        @if ($examination->scheduled_time)
-                            <div class="text-sm text-gray-600">
-                                {{ \Carbon\Carbon::parse($examination->scheduled_time)->format('H:i') }} WIB
-                            </div>
-                        @endif
-                    @else
-                        <div class="text-sm text-gray-500">
-                            Belum Dijadwalkan
-                        </div>
-                    @endif
-                </td>
-                <td class="py-4 px-4">
-                    @php
-                        $statusConfig = [
-                            'created' => ['class' => 'bg-gray-100 text-gray-800', 'icon' => 'fas fa-plus-circle', 'label' => 'Dibuat'],
-                            'pending_payment' => ['class' => 'bg-yellow-100 text-yellow-800', 'icon' => 'fas fa-credit-card', 'label' => 'Menunggu Pembayaran'],
-                            'pending_cash_payment' => ['class' => 'bg-orange-100 text-orange-800', 'icon' => 'fas fa-money-bill', 'label' => 'Bayar di Klinik'],
-                            'paid' => ['class' => 'bg-green-100 text-green-800', 'icon' => 'fas fa-check-circle', 'label' => 'Lunas'],
-                            'expired_payment' => ['class' => 'bg-red-100 text-red-800', 'icon' => 'fas fa-exclamation-triangle', 'label' => 'Pembayaran Kadaluarsa'],
-                            'scheduled' => ['class' => 'bg-blue-100 text-blue-800', 'icon' => 'fas fa-calendar-check', 'label' => 'Terjadwal'],
-                            'in_progress' => ['class' => 'bg-purple-100 text-purple-800', 'icon' => 'fas fa-spinner', 'label' => 'Sedang Berlangsung'],
-                            'completed' => ['class' => 'bg-green-100 text-green-800', 'icon' => 'fas fa-check', 'label' => 'Selesai'],
-                            'cancelled' => ['class' => 'bg-red-100 text-red-800', 'icon' => 'fas fa-times', 'label' => 'Dibatalkan'],
-                        ];
-                        $currentStatus = $statusConfig[$examination->status] ?? $statusConfig['created'];
-                    @endphp
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold {{ $currentStatus['class'] }}">
-                        <i class="{{ $currentStatus['icon'] }} mr-1"></i>
-                        {{ $currentStatus['label'] }}
-                    </span>
-                </td>
-                <td class="py-4 px-4">
-                    @php
-                        $paymentStatusConfig = [
-                            'pending' => ['class' => 'bg-yellow-100 text-yellow-800', 'icon' => 'fas fa-hourglass-half', 'label' => 'Menunggu'],
-                            'paid' => ['class' => 'bg-green-100 text-green-800', 'icon' => 'fas fa-check-circle', 'label' => 'Lunas'],
-                            'failed' => ['class' => 'bg-red-100 text-red-800', 'icon' => 'fas fa-times-circle', 'label' => 'Gagal'],
-                        ];
-                        $currentPaymentStatus = $paymentStatusConfig[$examination->payment_status] ?? $paymentStatusConfig['pending'];
-                    @endphp
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold {{ $currentPaymentStatus['class'] }}">
-                        <i class="{{ $currentPaymentStatus['icon'] }} mr-1"></i>
-                        {{ $currentPaymentStatus['label'] }}
-                    </span>
-                    @if ($examination->payment_method)
-                        <div class="text-xs text-gray-500 mt-1">
-                            {{ $examination->payment_method }}
-                        </div>
-                    @endif
-                </td>
-                <td class="py-4 px-4">
-                    <div class="font-semibold text-gray-900">
-                        Rp {{ number_format($examination->final_price, 0, ',', '.') }}
-                    </div>
-                </td>
-                <td class="py-4 px-4">
-                    <div class="flex items-center space-x-3">
-                        <a href="{{ route('pasien.examinations.show', $examination->id) }}"
-                           class="text-blue-600 hover:text-blue-800 font-medium text-sm">
-                            Detail
-                        </a>
-                        @if ($examination->result_available)
-                            <a href="{{ route('pasien.result.download', $examination->id) }}"
-                               class="text-green-600 hover:text-green-800 font-medium text-sm flex items-center">
-                                <i class="fas fa-download mr-1"></i>
-                                Hasil
-                            </a>
-                        @endif
-                        @if (in_array($examination->status, ['created', 'pending_payment', 'pending_cash_payment']) && $examination->payment_status === 'pending')
-                            <a href="{{ route('pasien.payment.show', $examination->id) }}"
-                               class="text-orange-600 hover:text-orange-800 font-medium text-sm flex items-center">
-                                <i class="fas fa-credit-card mr-1"></i>
-                                Bayar
+                        {{-- Safe check for examinations --}}
+                        @if (!empty($recentExaminations) && $recentExaminations->count() > 0)
+                            <a href="{{ route('pasien.examinations.index') }}"
+                                class="text-blue-600 hover:text-blue-800 font-semibold text-sm flex items-center transition-colors duration-200">
+                                Lihat Semua
+                                <i class="fas fa-arrow-right ml-2"></i>
                             </a>
                         @endif
                     </div>
-                </td>
-            </tr>
-            
-            @if ($loop->last)
-                        </tbody>
-                    </table>
                 </div>
-            @endif
-        @empty
-            {{-- This block runs if $recentExaminations is empty or null --}}
-            <div class="text-center py-12">
-                <i class="fas fa-clipboard-list text-gray-400 text-5xl mb-4"></i>
-                <h3 class="text-lg font-semibold text-gray-900 mb-2">Belum Ada Pemeriksaan</h3>
-                <p class="text-gray-600 mb-6">Anda belum memiliki riwayat pemeriksaan. Mulai daftar pemeriksaan pertama Anda.</p>
-                <a href="{{ route('pasien.examination.register.form') }}"
-                   class="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200">
-                    <i class="fas fa-plus mr-2"></i>
-                    Daftar Pemeriksaan
-                </a>
+
+                <div class="p-6">
+                    @if (!empty($recentExaminations) && $recentExaminations->count() > 0)
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full">
+                                <thead>
+                                    <tr class="border-b border-gray-200">
+                                        <th class="text-left py-4 px-4 font-semibold text-gray-700">Jenis Pemeriksaan</th>
+                                        <th class="text-left py-4 px-4 font-semibold text-gray-700">Jadwal</th>
+                                        <th class="text-left py-4 px-4 font-semibold text-gray-700">Status</th>
+                                        <th class="text-left py-4 px-4 font-semibold text-gray-700">Pembayaran</th>
+                                        <th class="text-left py-4 px-4 font-semibold text-gray-700">Harga</th>
+                                        <th class="text-left py-4 px-4 font-semibold text-gray-700">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-200">
+                                    @foreach ($recentExaminations as $examination)
+                                        <tr class="hover:bg-gray-50 transition-colors duration-150">
+                                            <td class="py-4 px-4">
+                                                <div class="font-semibold text-gray-900">
+                                                    {{ optional($examination->serviceItem)->name ?? 'Pemeriksaan Umum' }}
+                                                </div>
+                                                @if ($examination->pickup_requested)
+                                                    <div class="text-xs text-blue-600 mt-1">
+                                                        <i class="fas fa-car mr-1"></i>
+                                                        Dengan Penjemputan
+                                                    </div>
+                                                @endif
+                                            </td>
+                                            <td class="py-4 px-4">
+                                                @if ($examination->scheduled_date)
+                                                    <div class="text-gray-900">
+                                                        {{ \Carbon\Carbon::parse($examination->scheduled_date)->format('d M Y') }}
+                                                    </div>
+                                                    @if ($examination->scheduled_time)
+                                                        <div class="text-sm text-gray-600">
+                                                            {{ \Carbon\Carbon::parse($examination->scheduled_time)->format('H:i') }} WIB
+                                                        </div>
+                                                    @endif
+                                                @else
+                                                    <div class="text-sm text-gray-500">
+                                                        Belum Dijadwalkan
+                                                    </div>
+                                                @endif
+                                            </td>
+                                            <td class="py-4 px-4">
+                                                @php
+                                                    $statusConfig = [
+                                                        'created' => [
+                                                            'class' => 'bg-gray-100 text-gray-800',
+                                                            'icon' => 'fas fa-plus-circle',
+                                                            'label' => 'Dibuat',
+                                                        ],
+                                                        'pending_payment' => [
+                                                            'class' => 'bg-yellow-100 text-yellow-800',
+                                                            'icon' => 'fas fa-credit-card',
+                                                            'label' => 'Menunggu Pembayaran',
+                                                        ],
+                                                        'pending_cash_payment' => [
+                                                            'class' => 'bg-orange-100 text-orange-800',
+                                                            'icon' => 'fas fa-money-bill',
+                                                            'label' => 'Bayar di Klinik',
+                                                        ],
+                                                        'paid' => [
+                                                            'class' => 'bg-green-100 text-green-800',
+                                                            'icon' => 'fas fa-check-circle',
+                                                            'label' => 'Lunas',
+                                                        ],
+                                                        'expired_payment' => [
+                                                            'class' => 'bg-red-100 text-red-800',
+                                                            'icon' => 'fas fa-exclamation-triangle',
+                                                            'label' => 'Pembayaran Kadaluarsa',
+                                                        ],
+                                                        'scheduled' => [
+                                                            'class' => 'bg-blue-100 text-blue-800',
+                                                            'icon' => 'fas fa-calendar-check',
+                                                            'label' => 'Terjadwal',
+                                                        ],
+                                                        'in_progress' => [
+                                                            'class' => 'bg-purple-100 text-purple-800',
+                                                            'icon' => 'fas fa-spinner',
+                                                            'label' => 'Sedang Berlangsung',
+                                                        ],
+                                                        'completed' => [
+                                                            'class' => 'bg-green-100 text-green-800',
+                                                            'icon' => 'fas fa-check',
+                                                            'label' => 'Selesai',
+                                                        ],
+                                                        'cancelled' => [
+                                                            'class' => 'bg-red-100 text-red-800',
+                                                            'icon' => 'fas fa-times',
+                                                            'label' => 'Dibatalkan',
+                                                        ],
+                                                    ];
+                                                    $currentStatus = $statusConfig[$examination->status] ?? $statusConfig['created'];
+                                                @endphp
+                                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold {{ $currentStatus['class'] }}">
+                                                    <i class="{{ $currentStatus['icon'] }} mr-1"></i>
+                                                    {{ $currentStatus['label'] }}
+                                                </span>
+                                            </td>
+                                            <td class="py-4 px-4">
+                                                @php
+                                                    $paymentStatusConfig = [
+                                                        'pending' => [
+                                                            'class' => 'bg-yellow-100 text-yellow-800',
+                                                            'icon' => 'fas fa-hourglass-half',
+                                                            'label' => 'Menunggu',
+                                                        ],
+                                                        'paid' => [
+                                                            'class' => 'bg-green-100 text-green-800',
+                                                            'icon' => 'fas fa-check-circle',
+                                                            'label' => 'Lunas',
+                                                        ],
+                                                        'failed' => [
+                                                            'class' => 'bg-red-100 text-red-800',
+                                                            'icon' => 'fas fa-times-circle',
+                                                            'label' => 'Gagal',
+                                                        ],
+                                                    ];
+                                                    $currentPaymentStatus = $paymentStatusConfig[$examination->payment_status] ?? $paymentStatusConfig['pending'];
+                                                @endphp
+                                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold {{ $currentPaymentStatus['class'] }}">
+                                                    <i class="{{ $currentPaymentStatus['icon'] }} mr-1"></i>
+                                                    {{ $currentPaymentStatus['label'] }}
+                                                </span>
+                                                @if ($examination->payment_method)
+                                                    <div class="text-xs text-gray-500 mt-1">
+                                                        {{ $examination->payment_method }}
+                                                    </div>
+                                                @endif
+                                            </td>
+                                            <td class="py-4 px-4">
+                                                <div class="font-semibold text-gray-900">
+                                                    Rp {{ number_format($examination->final_price ?? 0, 0, ',', '.') }}
+                                                </div>
+                                            </td>
+                                            <td class="py-4 px-4">
+                                                <div class="flex items-center space-x-3">
+                                                    <a href="{{ route('pasien.examinations.show', $examination->id) }}"
+                                                        class="text-blue-600 hover:text-blue-800 font-medium text-sm transition-colors duration-200">
+                                                        Detail
+                                                    </a>
+                                                    @if ($examination->result_available)
+                                                        <a href="{{ route('pasien.result.download', $examination->id) }}"
+                                                            class="text-green-600 hover:text-green-800 font-medium text-sm flex items-center transition-colors duration-200">
+                                                            <i class="fas fa-download mr-1"></i>
+                                                            Hasil
+                                                        </a>
+                                                    @endif
+                                                    @if (in_array($examination->status, ['created', 'pending_payment', 'pending_cash_payment']) && $examination->payment_status === 'pending')
+                                                        <a href="{{ route('pasien.payment.show', $examination->id) }}"
+                                                            class="text-orange-600 hover:text-orange-800 font-medium text-sm flex items-center transition-colors duration-200">
+                                                            <i class="fas fa-credit-card mr-1"></i>
+                                                            Bayar
+                                                        </a>
+                                                    @endif
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @else
+                        {{-- Empty state when no examinations --}}
+                        <div class="text-center py-12">
+                            <i class="fas fa-clipboard-list text-gray-400 text-5xl mb-4"></i>
+                            <h3 class="text-lg font-semibold text-gray-900 mb-2">Belum Ada Pemeriksaan</h3>
+                            <p class="text-gray-600 mb-6">Anda belum memiliki riwayat pemeriksaan. Mulai daftar pemeriksaan pertama Anda.</p>
+                            <a href="{{ route('pasien.examination.register.form') }}"
+                                class="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200">
+                                <i class="fas fa-plus mr-2"></i>
+                                Daftar Pemeriksaan
+                            </a>
+                        </div>
+                    @endif
+                </div>
             </div>
-        @endforelse
-    </div>
-</div>
 
             {{-- Quick Actions Section --}}
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 mb-8">
@@ -291,8 +316,7 @@
                             class="group bg-gradient-to-br from-blue-500 to-blue-600 p-6 rounded-xl text-white hover:from-blue-600 hover:to-blue-700 transition-all duration-300 transform hover:-translate-y-1 hover:shadow-lg">
                             <div class="flex items-center justify-between mb-4">
                                 <i class="fas fa-plus-circle text-3xl opacity-80"></i>
-                                <i
-                                    class="fas fa-arrow-right group-hover:translate-x-1 transition-transform duration-300"></i>
+                                <i class="fas fa-arrow-right group-hover:translate-x-1 transition-transform duration-300"></i>
                             </div>
                             <h3 class="text-xl font-bold mb-2">Daftar Pemeriksaan</h3>
                             <p class="text-blue-100">Buat jadwal pemeriksaan kesehatan baru</p>
@@ -302,8 +326,7 @@
                             class="group bg-gradient-to-br from-green-500 to-green-600 p-6 rounded-xl text-white hover:from-green-600 hover:to-green-700 transition-all duration-300 transform hover:-translate-y-1 hover:shadow-lg">
                             <div class="flex items-center justify-between mb-4">
                                 <i class="fas fa-history text-3xl opacity-80"></i>
-                                <i
-                                    class="fas fa-arrow-right group-hover:translate-x-1 transition-transform duration-300"></i>
+                                <i class="fas fa-arrow-right group-hover:translate-x-1 transition-transform duration-300"></i>
                             </div>
                             <h3 class="text-xl font-bold mb-2">Riwayat Pemeriksaan</h3>
                             <p class="text-green-100">Lihat semua riwayat pemeriksaan Anda</p>
@@ -313,8 +336,7 @@
                             class="group bg-gradient-to-br from-indigo-500 to-indigo-600 p-6 rounded-xl text-white hover:from-indigo-600 hover:to-indigo-700 transition-all duration-300 transform hover:-translate-y-1 hover:shadow-lg">
                             <div class="flex items-center justify-between mb-4">
                                 <i class="fas fa-user-edit text-3xl opacity-80"></i>
-                                <i
-                                    class="fas fa-arrow-right group-hover:translate-x-1 transition-transform duration-300"></i>
+                                <i class="fas fa-arrow-right group-hover:translate-x-1 transition-transform duration-300"></i>
                             </div>
                             <h3 class="text-xl font-bold mb-2">Edit Profil</h3>
                             <p class="text-indigo-100">Perbarui informasi profil Anda</p>
@@ -337,8 +359,7 @@
                             <h3 class="text-lg font-semibold text-gray-900 mb-4">Hubungi Kami</h3>
                             <div class="space-y-4">
                                 <div class="flex items-center">
-                                    <div
-                                        class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
+                                    <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
                                         <i class="fas fa-phone text-blue-600"></i>
                                     </div>
                                     <div>
@@ -347,8 +368,7 @@
                                     </div>
                                 </div>
                                 <div class="flex items-center">
-                                    <div
-                                        class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
+                                    <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
                                         <i class="fas fa-envelope text-blue-600"></i>
                                     </div>
                                     <div>

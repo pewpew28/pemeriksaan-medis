@@ -60,6 +60,10 @@ class Examination extends Model
         return $this->belongsTo(ServiceItem::class);
     }
 
+    public function payments(){
+        return $this->hasMany(Payment::class);
+    }
+
     // Jika Anda mengakses $examination->service_item_price dan $examination->service_item_name
     // di blade, pastikan ini ada atau relasi serviceItem() di atas diatur dengan benar.
     // Jika service_item_name dan final_price disimpan di examinations, maka getter ini tidak diperlukan

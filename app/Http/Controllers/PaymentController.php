@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Examination;
 use App\Models\Payment;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon;
@@ -13,665 +12,387 @@ use Exception;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Client\ConnectionException;
 
+// Xendit SDK Imports
+use Xendit\Xendit; // Untuk inisialisasi API Key
+use Xendit\Invoice; // Untuk membuat Invoice (Pay-by-Link)
+use Xendit\Exceptions\ApiException; // Pastikan ini sudah benar
+use Xendit\Exceptions\XenditException; // Kadang beberapa error SDK menggunakan ini juga
+
 class PaymentController extends Controller
 {
     private $xenditSecretKey;
-    private $xenditBaseUrl;
-    private $apiVersion;
 
     public function __construct()
     {
         $this->xenditSecretKey = env('XENDIT_SECRET_KEY');
-        $this->xenditBaseUrl = env('XENDIT_BASE_URL', 'https://api.xendit.co');
-        $this->apiVersion = '2022-07-31';
 
-        // Validasi konfigurasi
-        if (!$this->xenditSecretKey) {
-            Log::error('Xendit secret key not configured in environment');
+        if (empty($this->xenditSecretKey)) {
+            Log::error('Xendit secret key not configured in environment. Please set XENDIT_SECRET_KEY.');
+        } else {
+            Xendit::setApiKey($this->xenditSecretKey);
+            Log::info('Xendit SDK initialized with provided API Key.');
         }
     }
 
-    public function createQrisPayment(Request $request)
+    /**
+     * Handles the POST request for processing online payments.
+     * This method will create a Xendit Invoice (Pay-by-Link) and redirect the user.
+     * It also saves the payment record to the database.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @param int $examinationId
+     * @return \Illuminate\Http\RedirectResponse|\Illuminate\Http\JsonResponse
+     */
+    public function createInvoicePayment(Request $request, $examinationId)
     {
         try {
-            // 1. Validasi input
-            $validator = Validator::make($request->all(), [
-                'examination_id' => 'required|exists:examinations,id',
-                'amount' => 'required|numeric|min:1000|max:50000000',
-            ]);
+            $examination = Examination::with('patient', 'serviceItem')->find($examinationId);
 
-            if ($validator->fails()) {
-                Log::warning('QRIS payment validation failed', [
-                    'errors' => $validator->errors(),
-                    'request_data' => $request->only(['examination_id', 'amount'])
-                ]);
-
+            if (!$examination) {
+                Log::warning('Attempted to create invoice payment for non-existent examination', ['examination_id' => $examinationId]);
                 return response()->json([
                     'success' => false,
-                    'message' => 'Validation failed',
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-
-            // 2. Cari examination
-            $exam = Examination::find($request->examination_id);
-            if (!$exam) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Examination not found'
+                    'message' => 'Examination not found.'
                 ], 404);
             }
 
-            // 3. Validasi status examination
-            if (!in_array($exam->status, ['pending', 'created', 'pending_cash_payment', 'pending_payment'])) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Payment cannot be created for this examination status: ' . $exam->status
-                ], 400);
-            }
-
-            // 4. Cek payment yang sudah ada dan masih aktif
-            $existingPayment = Payment::where('examination_id', $exam->id)
-                ->where('method', 'qris')
-                ->whereIn('status', ['PENDING', 'ACTIVE'])
-                ->where('expiry_time', '>', now())
-                ->first();
-
-            if ($existingPayment) {
-                Log::info('Active QRIS payment already exists', [
-                    'examination_id' => $exam->id,
-                    'existing_payment_id' => $existingPayment->id,
-                    'examination_status' => $exam->status
-                ]);
-
-                $exam->update([
-                    'status' => 'pending_payment'
-                ]);
-
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Active QRIS payment already exists',
-                    'data' => [
-                        'payment_id' => $existingPayment->id,
-                        'qr_code_url' => $existingPayment->qr_code_url,
-                        'qr_string' => $existingPayment->qr_string,
-                        'expiry_time' => $existingPayment->expiry_time->toISOString(),
-                        'amount' => $existingPayment->amount,
-                    ]
-                ]);
-            }
-
-            // 5. Buat external ID yang konsisten
-            $externalId = 'EXAM-' . $exam->id . '-QRIS-' . time() . '-' . uniqid();
-
-            // 6. Prepare request data
-            $requestData = [
-                'external_id' => $externalId,
-                'type' => 'DYNAMIC',
-                'amount' => (int) $request->amount,
-                'currency' => 'IDR',
-                'callback_url' => url('/api/xendit/webhook'),
-                'reference_id' => $externalId,
-            ];
-
-            Log::info('Creating QRIS payment', [
-                'examination_id' => $exam->id,
-                'amount' => $request->amount,
-                'external_id' => $externalId,
-                'request_data' => $requestData
-            ]);
-
-            // 7. Call Xendit API
-            $response = Http::timeout(30)
-                ->withBasicAuth($this->xenditSecretKey, '')
-                ->withHeaders([
-                    'api-version' => $this->apiVersion,
-                    'Content-Type' => 'application/json',
-                ])
-                ->post($this->xenditBaseUrl . '/qr_codes', $requestData);
-
-            $data = $response->json();
-            // dd($data);
-
-            Log::info('Xendit QRIS API response', [
-                'status_code' => $response->status(),
-                'response_data' => $data,
-                'headers' => $response->headers()
-            ]);
-
-            // 8. Handle successful response
-            if ($response->successful() && isset($data['id'])) {
-                // Parse expiry time dengan fallback yang lebih baik
-                $expiryTime = $this->parseExpiryTime($data);
-
-                $payment = Payment::create([
-                    'examination_id' => $exam->id,
-                    'xendit_id' => $data['id'],
-                    'method' => 'qris',
-                    'status' => $data['status'] ?? 'ACTIVE',
-                    'amount' => (int) $data['amount'],
-                    'currency' => $data['currency'] ?? 'IDR',
-                    'qr_string' => $data['qr_string'] ?? null,
-                    'qr_code_url' => $data['qr_code_url'] ?? null,
-                    'expiry_time' => $expiryTime,
-                    'reference_code' => $externalId,
-                ]);
-
-                // Update examination status
-                $exam->update(['status' => 'pending']);
-
-                Log::info('QRIS payment created successfully', [
-                    'payment_id' => $payment->id,
-                    'xendit_id' => $data['id'],
-                    'examination_id' => $exam->id
-                ]);
-
-                return response()->json([
-                    'success' => true,
-                    'message' => 'QRIS payment created successfully.',
-                    'data' => [
-                        'payment_id' => $payment->id,
-                        'qr_code_url' => $payment->qr_code_url,
-                        'qr_string' => $payment->qr_string,
-                        'expiry_time' => $payment->expiry_time->toISOString(),
-                        'amount' => $payment->amount,
-                        'external_id' => $externalId,
-                    ]
-                ]);
-            }
-
-            // 9. Handle error response
-            $this->logXenditError('QRIS', $response, $data, $requestData);
-
-            return response()->json([
-                'success' => false,
-                'message' => $this->getErrorMessage($data),
-                'error_code' => $response->status()
-            ], $this->getResponseStatusCode($response));
-        } catch (RequestException | ConnectionException $e) {
-            return $this->handleNetworkError($e, 'QRIS', $request->examination_id ?? null);
-        } catch (Exception $e) {
-            return $this->handleGeneralException($e, 'QRIS', $request->examination_id ?? null);
-        }
-    }
-
-    public function createTransferPayment(Request $request)
-    {
-        try {
-            $validator = Validator::make($request->all(), [
-                'examination_id' => 'required|exists:examinations,id',
-                'amount' => 'required|numeric|min:10000|max:50000000',
-                'bank_code' => 'sometimes|string|in:BNI,BCA,MANDIRI,BRI'
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Validation failed',
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-
-            $examination = Examination::findOrFail($request->examination_id);
-
+            // Validate the current examination status to ensure payment can be initiated
             if (!in_array($examination->status, ['pending', 'created', 'pending_cash_payment', 'pending_payment'])) {
+                Log::warning('Attempted to create invoice payment for examination in invalid status', [
+                    'examination_id' => $examinationId,
+                    'current_status' => $examination->status
+                ]);
                 return response()->json([
                     'success' => false,
                     'message' => 'Payment cannot be created for this examination status: ' . $examination->status
                 ], 400);
             }
 
-            // Cek existing VA payment
+            // Check for an existing active Xendit Invoice to prevent duplicates
             $existingPayment = Payment::where('examination_id', $examination->id)
-                ->where('method', 'transfer')
-                ->whereIn('status', ['PENDING', 'ACTIVE'])
-                ->where('expiry_time', '>', now())
+                ->where('method', 'invoice')
+                ->whereIn('status', ['PENDING', 'ACTIVE']) // Statuses indicating an open invoice
+                ->where('expiry_time', '>', now()) // Ensure the existing invoice is still valid
                 ->first();
 
             if ($existingPayment) {
-                $examination->update([
-                    'status' => 'pending_payment'
+                Log::info('Active Xendit Invoice already exists, redirecting to existing link.', [
+                    'payment_id' => $existingPayment->id,
+                    'checkout_link' => $existingPayment->checkout_link
                 ]);
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Active Virtual Account payment already exists',
-                    'data' => [
-                        'payment_id' => $existingPayment->id,
-                        'bank_accounts' => [[
-                            'bank_name' => $this->getBankName($existingPayment->bank_code),
-                            'account_name' => $existingPayment->account_name,
-                            'account_number' => $existingPayment->account_number,
-                        ]],
-                        'reference_code' => $existingPayment->reference_code,
-                        'expiry_time' => $existingPayment->expiry_time->toISOString(),
-                        'amount' => $existingPayment->amount,
-                    ]
-                ]);
+                // Redirect user to the existing invoice link
+                return redirect()->away($existingPayment->checkout_link);
             }
 
-            $externalId = 'EXAM-' . $examination->id . '-VA-' . time() . '-' . uniqid();
-            $bankCode = $request->bank_code ?? 'BNI';
-            $expirationDate = Carbon::now()->addHours(24);
+            // Generate a unique external ID for the Xendit Invoice
+            $externalId = 'EXAM-' . $examination->id . '-INV-' . Carbon::now()->format('YmdHis') . '-' . uniqid();
 
-            $requestData = [
+            // Prepare parameters for Xendit Invoice creation
+            $params = [
                 'external_id' => $externalId,
-                'bank_code' => $bankCode,
-                'name' => 'Klinik Medis Sejahtera',
-                'expected_amount' => (int) $request->amount,
-                'is_single_use' => true,
-                // Tambahkan baris ini:
-                'is_closed' => true, // Diperlukan jika expected_amount diberikan
-                'expiration_date' => $expirationDate->toIso8601String(),
-                'callback_url' => url('/api/xendit/webhook'),
+                'amount' => (int) $examination->serviceItem->price, // Ensure amount is an integer
+                'description' => 'Pembayaran Pemeriksaan Medis: ' . $examination->serviceItem->name,
+                // Provide a fallback email if patient email is not available
+                'payer_email' => $examination->patient->email ?? 'noreply@klinik.com',
+                'customer' => [
+                    'given_names' => $examination->patient->name,
+                    'mobile_number' => $examination->patient->phone_number ?? null,
+                ],
+                'invoice_duration' => 86400, // 24 hours in seconds (can be adjusted)
+                'callback_url' => url('/api/xendit/webhook'), // Xendit will send payment notifications here
+                // Redirect URLs for user after payment success/failure
+                'success_redirect_url' => url('/pasien/pembayaran/' . $examination->id . '/success'),
+                'failure_redirect_url' => url('/pasien/pembayaran/' . $examination->id . '/failed'),
             ];
 
-            Log::info('Creating Virtual Account payment', [
-                'examination_id' => $examination->id,
-                'bank_code' => $bankCode,
-                'amount' => $request->amount,
-                'external_id' => $externalId
-            ]);
+            Log::info('Attempting to create Xendit Invoice (Pay-by-Link) via SDK', ['params' => $params]);
 
-            $response = Http::timeout(30)
-                ->withBasicAuth($this->xenditSecretKey, '')
-                ->withHeaders([
-                    'api-version' => $this->apiVersion,
-                    'Content-Type' => 'application/json',
-                ])
-                ->post($this->xenditBaseUrl . '/callback_virtual_accounts', $requestData);
+            // Create the invoice using Xendit SDK
+            $createInvoice = Invoice::create($params);
 
-            $responseData = $response->json();
-
-            Log::info('Xendit VA API response', [
-                'status_code' => $response->status(),
-                'response_data' => $responseData
-            ]);
-
-            if ($response->successful() && isset($responseData['id'])) {
-                $payment = Payment::create([
-                    'examination_id' => $examination->id,
-                    'xendit_id' => $responseData['id'],
-                    'method' => 'transfer',
-                    'status' => $responseData['status'] ?? 'PENDING',
-                    'amount' => (int) $responseData['expected_amount'],
-                    'currency' => $responseData['currency'] ?? 'IDR',
-                    'bank_code' => $responseData['bank_code'],
-                    'account_number' => $responseData['account_number'],
-                    'account_name' => $responseData['name'],
-                    'expiry_time' => Carbon::parse($responseData['expiration_date']),
-                    'reference_code' => $externalId,
-                ]);
-
-                $examination->update(['status' => 'pending']);
-
-                Log::info('Virtual Account payment created successfully', [
-                    'payment_id' => $payment->id,
-                    'xendit_id' => $responseData['id']
-                ]);
-
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Virtual Account payment initiated successfully.',
-                    'data' => [
-                        'payment_id' => $payment->id,
-                        'bank_accounts' => [[
-                            'bank_name' => $this->getBankName($payment->bank_code),
-                            'account_name' => $payment->account_name,
-                            'account_number' => $payment->account_number,
-                        ]],
-                        'reference_code' => $payment->reference_code,
-                        'expiry_time' => $payment->expiry_time->toISOString(),
-                        'amount' => $payment->amount,
-                    ]
-                ]);
-            }
-
-            $this->logXenditError('Virtual Account', $response, $responseData, $requestData);
-
-            return response()->json([
-                'success' => false,
-                'message' => $this->getErrorMessage($responseData)
-            ], $this->getResponseStatusCode($response));
-        } catch (RequestException | ConnectionException $e) {
-            return $this->handleNetworkError($e, 'Virtual Account', $request->examination_id ?? null);
-        } catch (Exception $e) {
-            return $this->handleGeneralException($e, 'Virtual Account', $request->examination_id ?? null);
-        }
-    }
-
-    public function createCashPayment(Request $request)
-    {
-        try {
-            $validator = Validator::make($request->all(), [
-                'examination_id' => 'required|exists:examinations,id',
-                'amount' => 'required|numeric|min:0|max:50000000',
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Validation failed',
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-
-            $examination = Examination::findOrFail($request->examination_id);
-
-            if (!in_array($examination->status, ['pending', 'created', 'pending_cash_payment', 'pending_payment'])) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Payment cannot be created for this examination status: ' . $examination->status
-                ], 400);
-            }
-
-            // Cek existing cash payment
-            $existingPayment = Payment::where('examination_id', $examination->id)
-                ->where('method', 'cash')
-                ->whereIn('status', ['PENDING'])
-                ->first();
-
-            if ($existingPayment) {
-                $examination->update(['status' => 'pending_cash_payment']);
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Cash payment option already selected.',
-                    'data' => [
-                        'payment_id' => $existingPayment->id,
-                        'clinic_info' => [
-                            'name' => 'Klinik Medis Sejahtera',
-                            'hours' => 'Mon-Sat: 08:00 - 20:00, Sun: 08:00 - 16:00',
-                        ]
-                    ]
-                ]);
-            }
-
+            // Save the payment record in your local database
             $payment = Payment::create([
                 'examination_id' => $examination->id,
-                'method' => 'cash',
-                'status' => 'PENDING',
-                'amount' => (int) $request->amount,
-                'currency' => 'IDR',
-                'reference_code' => 'CASH-EXAM-' . $examination->id . '-' . time(),
+                'xendit_id' => $createInvoice['id'],
+                'method' => 'invoice', // or 'online' if preferred for internal tracking
+                'status' => $createInvoice['status'] ?? 'PENDING', // Initial status from Xendit
+                'amount' => (int) $createInvoice['amount'],
+                'currency' => $createInvoice['currency'] ?? 'IDR',
+                'checkout_link' => $createInvoice['invoice_url'],
+                'reference_code' => $externalId,
+                'expiry_time' => Carbon::parse($createInvoice['expiry_date']),
             ]);
 
-            $examination->update(['status' => 'pending_cash_payment']);
+            // Update examination status to indicate pending payment
+            // Assuming 'pending_payment' is a suitable status for online payments
+            $examination->update(['status' => 'pending_payment']);
 
-            Log::info('Cash payment created', [
+            Log::info('Xendit Invoice created successfully and payment saved to DB.', [
                 'payment_id' => $payment->id,
-                'examination_id' => $examination->id,
-                'amount' => $request->amount
+                'xendit_id' => $createInvoice['id'],
+                'checkout_link' => $createInvoice['invoice_url'],
+                'examination_new_status' => $examination->status
             ]);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Cash payment option selected. Please pay at the clinic.',
-                'data' => [
-                    'payment_id' => $payment->id,
-                    'amount' => $payment->amount,
-                    'reference_code' => $payment->reference_code,
-                    'clinic_info' => [
-                        'name' => 'Klinik Medis Sejahtera',
-                        'hours' => 'Mon-Sat: 08:00 - 20:00, Sun: 08:00 - 16:00',
-                    ]
-                ]
+            // Redirect the user to the Xendit Invoice URL
+            return redirect()->away($createInvoice['invoice_url']);
+
+        } catch (ApiException $e) {
+            // Handle Xendit API specific exceptions
+            Log::error("Xendit Invoice API Error: " . $e->getMessage(), [
+                'code' => $e->getCode(),
+                // 'errors' => $e->getErrorData(), // This method does not exist on ApiException
+                'examination_id' => $examinationId,
+                'request_params' => $params ?? [],
+                'xendit_error_message' => $e->getMessage() // Use getMessage() for error details
             ]);
-        } catch (Exception $e) {
-            return $this->handleGeneralException($e, 'Cash Payment', $request->examination_id ?? null);
-        }
-    }
-
-    public function getPaymentStatus($paymentId)
-    {
-        try {
-            $payment = Payment::with('examination')->find($paymentId);
-
-            if (!$payment) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Payment not found.'
-                ], 404);
-            }
-
-            // Sync status dengan Xendit jika diperlukan
-            if ($payment->xendit_id && !in_array($payment->status, ['PAID', 'EXPIRED', 'CANCELLED'])) {
-                $this->syncPaymentStatusWithXendit($payment);
-            }
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Payment status retrieved.',
-                'data' => [
-                    'payment_id' => $payment->id,
-                    'status' => $payment->status,
-                    'method' => $payment->method,
-                    'amount' => $payment->amount,
-                    'currency' => $payment->currency,
-                    'expiry_time' => $payment->expiry_time?->toISOString(),
-                    'examination_status' => $payment->examination->status ?? null,
-                ]
+            return redirect()->route('pasien.payment.show', ['examination' => $examinationId])->with('error', 'Gagal membuat link pembayaran: ' . $e->getMessage());
+        } catch (XenditException $e) {
+            // Catch broader Xendit SDK exceptions if any specific ones are not caught by ApiException
+            Log::error("Xendit SDK Error (General): " . $e->getMessage(), [
+                'code' => $e->getCode(),
+                'examination_id' => $examinationId,
+                'trace' => $e->getTraceAsString()
             ]);
-        } catch (Exception $e) {
-            Log::error('Error getting payment status', [
-                'payment_id' => $paymentId,
-                'error' => $e->getMessage()
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Error retrieving payment status'
-            ], 500);
-        }
-    }
-
-    public function handleXenditWebhook(Request $request)
-    {
-        try {
-            // Validasi X-Callback-Token
-            $xCallbackToken = $request->header('X-Callback-Token');
-
-            if ($xCallbackToken !== $this->xenditSecretKey) {
-                Log::warning('Xendit Webhook: Invalid X-Callback-Token', [
-                    'received_token' => substr($xCallbackToken, 0, 10) . '***',
-                    'ip' => $request->ip()
-                ]);
-                return response('Unauthorized', 401);
-            }
-
-            $event = $request->all();
-            Log::info('Xendit Webhook Received', ['payload' => $event]);
-
-            // Ekstrak data dari webhook
-            $xenditId = $event['id'] ?? null;
-            $status = $event['status'] ?? null;
-            $eventType = $event['event'] ?? null;
-            $externalId = $event['external_id'] ?? null;
-
-            if (!$xenditId) {
-                Log::warning('Xendit Webhook: Missing Xendit ID in payload');
-                return response('Bad Request: Missing ID', 400);
-            }
-
-            // Cari payment berdasarkan xendit_id
-            $payment = Payment::where('xendit_id', $xenditId)->first();
-
-            if (!$payment) {
-                Log::warning('Xendit Webhook: Payment not found', [
-                    'xendit_id' => $xenditId,
-                    'external_id' => $externalId
-                ]);
-                return response('Not Found: Payment not recognized', 404);
-            }
-
-            // Update status berdasarkan event
-            $updated = $this->updatePaymentStatus($payment, $eventType, $status, $event);
-
-            if ($updated) {
-                Log::info('Payment status updated via webhook', [
-                    'payment_id' => $payment->id,
-                    'old_status' => $payment->getOriginal('status'),
-                    'new_status' => $payment->status,
-                    'event_type' => $eventType
-                ]);
-            }
-
-            return response('Webhook processed successfully', 200);
-        } catch (Exception $e) {
-            Log::error('Xendit Webhook processing error', [
-                'error' => $e->getMessage(),
+            return redirect()->route('pasien.payment.show', ['examination' => $examinationId])->with('error', 'Terjadi kesalahan pada layanan pembayaran: ' . $e->getMessage());
+        } catch (\Exception $e) {
+            // Catch any other unexpected exceptions
+            Log::error("Unexpected error processing online payment: " . $e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
-                'payload' => $request->all()
+                'examination_id' => $examinationId
             ]);
-
-            return response('Internal Server Error', 500);
+            return redirect()->route('pasien.payment.show', ['examination' => $examinationId])->with('error', 'Terjadi kesalahan internal saat membuat link pembayaran.');
         }
     }
 
-    // Helper Methods
-
-    private function parseExpiryTime($data)
-    {
-        if (isset($data['expires_at'])) {
-            return Carbon::parse($data['expires_at']);
-        } elseif (isset($data['expiry_date'])) {
-            return Carbon::parse($data['expiry_date']);
-        } else {
-            return now()->addHour(); // Default 1 jam
-        }
-    }
-
-    private function logXenditError($type, $response, $data, $requestData)
-    {
-        Log::error("Xendit {$type} API error", [
-            'status_code' => $response->status(),
-            'response_data' => $data,
-            'request_data' => $requestData,
-            'headers' => $response->headers()
-        ]);
-    }
-
-    private function getErrorMessage($data)
-    {
-        if (isset($data['message'])) {
-            return $data['message'];
-        } elseif (isset($data['error_code'])) {
-            return $data['error_code'];
-        } elseif (isset($data['errors']) && is_array($data['errors']) && count($data['errors']) > 0) {
-            return $data['errors'][0]['message'] ?? 'Unknown error';
-        }
-
-        return 'Failed to process payment';
-    }
-
-    private function getResponseStatusCode($response)
-    {
-        $statusCode = $response->status();
-        return ($statusCode >= 400 && $statusCode < 500) ? $statusCode : 500;
-    }
-
-    private function handleNetworkError($exception, $paymentType, $examinationId)
-    {
-        Log::error("Network error when calling Xendit API for {$paymentType}", [
-            'error' => $exception->getMessage(),
-            'examination_id' => $examinationId,
-            'type' => get_class($exception)
-        ]);
-
-        return response()->json([
-            'success' => false,
-            'message' => 'Network error. Please check your connection and try again.'
-        ], 503);
-    }
-
-    private function handleGeneralException($exception, $paymentType, $examinationId)
-    {
-        Log::error("Unexpected error in {$paymentType} payment", [
-            'error' => $exception->getMessage(),
-            'trace' => $exception->getTraceAsString(),
-            'examination_id' => $examinationId
-        ]);
-
-        return response()->json([
-            'success' => false,
-            'message' => 'An unexpected error occurred. Please try again.'
-        ], 500);
-    }
-
-    private function syncPaymentStatusWithXendit($payment)
+    /**
+     * Handles successful payment callbacks from Xendit.
+     * Updates examination and payment status to completed/paid.
+     *
+     * @param int $examinationId
+     * @param Request $request
+     * @return \Illuminate\Http\RedirectResponse|\Illuminate\View\View
+     */
+    public function paymentSuccess($examinationId, Request $request)
     {
         try {
-            $endpoint = match ($payment->method) {
-                'qris' => "/qr_codes/{$payment->xendit_id}",
-                'transfer' => "/callback_virtual_accounts/{$payment->xendit_id}",
-                default => null
-            };
+            $examination = Examination::with('patient', 'serviceItem')->find($examinationId);
 
-            if (!$endpoint) return;
+            if (!$examination) {
+                Log::warning('Payment success callback for non-existent examination', ['examination_id' => $examinationId]);
+                return redirect()->route('pasien.dashboard')->with('error', 'Pemeriksaan tidak ditemukan.');
+            }
 
-            $response = Http::timeout(15)
-                ->withBasicAuth($this->xenditSecretKey, '')
-                ->get($this->xenditBaseUrl . $endpoint);
+            // Find the most recent payment for this examination
+            $payment = Payment::where('examination_id', $examination->id)
+                ->whereIn('method', ['invoice', 'qris', 'virtual_account'])
+                ->orderBy('created_at', 'desc')
+                ->first();
 
-            if ($response->successful()) {
-                $data = $response->json();
-                $newStatus = $data['status'] ?? null;
+            if (!$payment) {
+                Log::warning('Payment success callback but no payment record found', ['examination_id' => $examinationId]);
+                // If payment record is not found, it might be due to a race condition or direct redirect
+                // Ideally, webhook should update first. For user experience, we can still show success.
+                return view('patient.examination.payment', [
+                    'examination' => $examination,
+                    'payment' => null, // No specific payment record to show
+                    'message' => 'Pembayaran Anda mungkin sudah berhasil diproses, namun detail transaksi belum terdaftar. Mohon cek status pemeriksaan Anda. '
+                ])->with('warning', 'Data pembayaran tidak ditemukan, namun pemeriksaan mungkin sudah terbayar.');
+            }
 
-                if ($newStatus && $newStatus !== $payment->status) {
-                    $payment->update(['status' => $newStatus]);
+            // Update payment status to PAID if not already
+            if ($payment->status !== 'PAID') {
+                $payment->update([
+                    'status' => 'PAID',
+                    'paid_at' => Carbon::now()
+                ]);
 
-                    // Update examination status
-                    if ($newStatus === 'PAID') {
-                        $payment->examination->update(['status' => 'paid']);
-                    } elseif ($newStatus === 'EXPIRED') {
-                        $payment->examination->update(['status' => 'expired_payment']);
-                    }
+                Log::info('Payment status updated to PAID', [
+                    'payment_id' => $payment->id,
+                    'examination_id' => $examinationId
+                ]);
+            }
+
+            // Update examination status to completed if not already in a final state
+            if (!in_array($examination->status, ['completed', 'paid'])) {
+                $examination->update(['status' => 'completed', 'payment_status' => 'paid']);
+
+                Log::info('Examination status updated to completed', [
+                    'examination_id' => $examinationId,
+                    'previous_status' => $examination->status
+                ]);
+            }
+
+            // Return success view or redirect with success message
+            return view('patient.examination.payment', [
+                'examination' => $examination,
+                'payment' => $payment,
+                'message' => 'Pembayaran berhasil! Pemeriksaan Anda telah dikonfirmasi.'
+            ]);
+        } catch (\Exception $e) {
+            Log::error("Error processing payment success callback: " . $e->getMessage(), [
+                'examination_id' => $examinationId,
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->route('pasien.dashboard')->with('error', 'Terjadi kesalahan saat memproses konfirmasi pembayaran.');
+        }
+    }
+
+    /**
+     * Handle failed payment callback
+     * Updates examination and payment status to cancelled
+     *
+     * @param int $examinationId
+     * @return \Illuminate\Http\RedirectResponse|\Illuminate\View\View
+     */
+    public function paymentFailed($examinationId)
+    {
+        try {
+            $examination = Examination::with('patient', 'serviceItem')->find($examinationId);
+
+            if (!$examination) {
+                Log::warning('Payment failed callback for non-existent examination', ['examination_id' => $examinationId]);
+                return redirect()->route('pasien.dashboard')->with('error', 'Pemeriksaan tidak ditemukan.');
+            }
+
+            // Find the most recent payment for this examination
+            $payment = Payment::where('examination_id', $examination->id)
+                ->whereIn('method', ['invoice', 'qris', 'virtual_account'])
+                ->orderBy('created_at', 'desc')
+                ->first();
+
+            if ($payment) {
+                // Update payment status to FAILED/CANCELLED if not already
+                if (!in_array($payment->status, ['FAILED', 'CANCELLED', 'EXPIRED'])) {
+                    $payment->update([
+                        'status' => 'CANCELLED',
+                        'cancelled_at' => Carbon::now()
+                    ]);
+
+                    Log::info('Payment status updated to CANCELLED', [
+                        'payment_id' => $payment->id,
+                        'examination_id' => $examinationId
+                    ]);
                 }
             }
-        } catch (Exception $e) {
-            Log::warning('Failed to sync payment status with Xendit', [
-                'payment_id' => $payment->id,
-                'error' => $e->getMessage()
+
+            // Update examination status to cancelled
+            if (!in_array($examination->status, ['cancelled', 'failed'])) {
+                $examination->update(['status' => 'cancelled']);
+
+                Log::info('Examination status updated to cancelled', [
+                    'examination_id' => $examinationId,
+                    'previous_status' => $examination->status
+                ]);
+            }
+
+            // Return failed view or redirect with error message
+            return view('patient.examination.payment', [
+                'examination' => $examination,
+                'payment' => $payment,
+                'message' => 'Pembayaran gagal atau dibatalkan. Silakan coba lagi atau hubungi customer service.'
             ]);
+        } catch (\Exception $e) {
+            Log::error("Error processing payment failed callback: " . $e->getMessage(), [
+                'examination_id' => $examinationId,
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->route('pasien.dashboard')->with('error', 'Terjadi kesalahan saat memproses pembayaran yang gagal.');
         }
     }
 
-    private function updatePaymentStatus($payment, $eventType, $status, $eventData)
+    /**
+     * This method is generally for updating payment method choice via AJAX,
+     * but not for initiating actual payment processing.
+     * Left for reference if needed elsewhere.
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function updatePaymentMethod(Request $request)
     {
-        $updated = false;
-        $oldStatus = $payment->status;
+        $request->validate([
+            'examination_id' => 'required|exists:examinations,id',
+            'payment_method' => 'required|in:online,cash'
+        ]);
 
-        // Mapping event types ke status
-        if (in_array($eventType, ['QR_CODE_PAID', 'virtual_account.paid']) || $status === 'PAID') {
-            if ($payment->status !== 'PAID') {
-                $payment->update(['status' => 'PAID']);
-                $payment->examination->update(['status' => 'paid']);
-                $updated = true;
-            }
-        } elseif (in_array($eventType, ['QR_CODE_EXPIRED', 'virtual_account.expired']) || $status === 'EXPIRED') {
-            if ($payment->status !== 'EXPIRED') {
-                $payment->update(['status' => 'EXPIRED']);
-                $payment->examination->update(['status' => 'expired_payment']);
-                $updated = true;
-            }
-        } elseif ($eventType === 'virtual_account.created' || $status === 'PENDING') {
-            if ($payment->status !== 'PENDING') {
-                $payment->update(['status' => 'PENDING']);
-                $updated = true;
-            }
-        }
+        $examination = Examination::findOrFail($request->examination_id);
+        $examination->update([
+            'payment_method' => $request->payment_method,
+            // 'pending' for cash will be changed to 'pending_cash_payment' by confirmCashPayment
+            'payment_status' => $request->payment_method === 'cash' ? 'pending' : 'pending'
+        ]);
 
-        return $updated;
+        return response()->json(['success' => true, 'message' => 'Payment method updated']);
     }
 
-    private function getBankName($bankCode)
+    /**
+     * Handles the POST request for confirming cash payment.
+     * This method updates the examination status to reflect cash payment choice.
+     *
+     * @param Request $request
+     * @param int $examinationId
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function confirmCashPayment(Request $request, $examinationId)
     {
-        return match ($bankCode) {
-            'BNI' => 'Bank Negara Indonesia (BNI)',
-            'BCA' => 'Bank Central Asia (BCA)',
-            'MANDIRI' => 'Bank Mandiri',
-            'BRI' => 'Bank Rakyat Indonesia (BRI)',
-            'PERMATA' => 'Bank Permata',
-            'SAHABAT_SAMPOERNA' => 'Bank Sahabat Sampoerna',
-            default => $bankCode,
-        };
+        // Validate incoming request data, though examination_id is already in route param
+        $validator = Validator::make(['examination_id' => $examinationId], [
+            'examination_id' => 'required|exists:examinations,id',
+        ]);
+
+        if ($validator->fails()) {
+            Log::warning('Validation failed for cash payment confirmation', ['errors' => $validator->errors()->all()]);
+            return redirect()->back()->with('error', 'Data pemeriksaan tidak valid.');
+        }
+
+        try {
+            $examination = Examination::find($examinationId);
+
+            if (!$examination) {
+                Log::warning('Attempted to confirm cash payment for non-existent examination', ['examination_id' => $examinationId]);
+                return redirect()->back()->with('error', 'Pemeriksaan tidak ditemukan.');
+            }
+
+            // Update examination status. Use 'pending_cash_payment' to distinguish from other pending states.
+            $examination->update([
+                'payment_method' => 'cash',
+                'payment_status' => 'pending', // Set specific status for cash payment confirmation
+                'status' => 'pending_cash_payment' // Also update main status if it reflects payment state
+            ]);
+
+            // Optionally, create a Payment record for cash, if you track these.
+            // This can be useful for comprehensive payment history.
+            // Example:
+            // Payment::create([
+            //     'examination_id' => $examination->id,
+            //     'method' => 'cash',
+            //     'status' => 'PENDING', // Initial status for cash payment
+            //     'amount' => $examination->serviceItem->price,
+            //     'currency' => 'IDR',
+            //     'reference_code' => 'CASH-' . $examination->id . '-' . Carbon::now()->format('YmdHis'),
+            //     'checkout_link' => null, // No checkout link for cash
+            //     'paid_at' => null,
+            //     'expiry_time' => null,
+            // ]);
+
+
+            Log::info('Cash payment confirmed for examination.', [
+                'examination_id' => $examinationId,
+                'new_status' => $examination->status,
+                'new_payment_status' => $examination->payment_status
+            ]);
+
+            return redirect()->route('pasien.examinations.index', ['examination' => $examinationId])->with('success', 'Pilihan pembayaran tunai telah dicatat. Silakan bayar di kasir klinik.');
+
+        } catch (\Exception $e) {
+            Log::error("Error confirming cash payment: " . $e->getMessage(), [
+                'examination_id' => $examinationId,
+                'trace' => $e->getTraceAsString()
+            ]);
+            return redirect()->back()->with('error', 'Terjadi kesalahan saat mengkonfirmasi pembayaran tunai.');
+        }
     }
 }

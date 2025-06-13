@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "29f3806fecf6e3d06a75fb6386dc2e13",
+    "content-hash": "265baa5e2677d0cf4c772210b99276cc",
     "packages": [
         {
             "name": "brick/math",
@@ -6685,63 +6685,48 @@
         },
         {
             "name": "xendit/xendit-php",
-            "version": "7.0.0",
+            "version": "2.19.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/xendit/xendit-php.git",
-                "reference": "4c6e1b9899aef8c6224c7c1ae46963b71435280b"
+                "reference": "02e9e413a072e68d238adb1750d9e125268b16e5"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/xendit/xendit-php/zipball/4c6e1b9899aef8c6224c7c1ae46963b71435280b",
-                "reference": "4c6e1b9899aef8c6224c7c1ae46963b71435280b",
+                "url": "https://api.github.com/repos/xendit/xendit-php/zipball/02e9e413a072e68d238adb1750d9e125268b16e5",
+                "reference": "02e9e413a072e68d238adb1750d9e125268b16e5",
                 "shasum": ""
             },
             "require": {
-                "ext-curl": "*",
                 "ext-json": "*",
-                "ext-mbstring": "*",
-                "guzzlehttp/guzzle": "^7.3",
-                "guzzlehttp/psr7": "^1.7 || ^2.0",
-                "php": "^7.4 || ^8.0",
-                "vlucas/phpdotenv": "^5.5"
+                "guzzlehttp/guzzle": ">=6.0",
+                "php": ">=7.2.0"
             },
             "require-dev": {
-                "friendsofphp/php-cs-fixer": "^3.5",
-                "phpunit/phpunit": "^8.0 || ^9.0"
+                "phpunit/phpunit": "^8.5.13",
+                "squizlabs/php_codesniffer": "~3.5",
+                "vlucas/phpdotenv": "^4.1"
             },
             "type": "library",
             "autoload": {
                 "psr-4": {
-                    "Xendit\\": "lib/"
+                    "Xendit\\": "src/"
                 }
             },
             "notification-url": "https://packagist.org/downloads/",
             "license": [
-                "unlicense"
+                "MIT"
             ],
-            "authors": [
-                {
-                    "name": "OpenAPI-Generator contributors",
-                    "homepage": "https://openapi-generator.tech"
-                }
-            ],
-            "description": "Xendit PHP SDK",
-            "homepage": "https://openapi-generator.tech",
+            "description": "PHP clients for Xendit API",
+            "homepage": "https://github.com/xendit/xendit-php",
             "keywords": [
-                "api",
-                "openapi",
-                "openapi-generator",
-                "openapitools",
-                "php",
-                "rest",
-                "sdk"
+                "xendit"
             ],
             "support": {
                 "issues": "https://github.com/xendit/xendit-php/issues",
-                "source": "https://github.com/xendit/xendit-php/tree/7.0.0"
+                "source": "https://github.com/xendit/xendit-php/tree/2.19.0"
             },
-            "time": "2025-05-29T04:04:47+00:00"
+            "time": "2022-10-12T03:31:31+00:00"
         },
         {
             "name": "yajra/laravel-datatables-oracle",
@@ -6897,16 +6882,16 @@
         },
         {
             "name": "filp/whoops",
-            "version": "2.18.1",
+            "version": "2.18.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/filp/whoops.git",
-                "reference": "8fcc6a862f2e7b94eb4221fd0819ddba3d30ab26"
+                "reference": "89dabca1490bc77dbcab41c2b20968c7e44bf7c3"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/filp/whoops/zipball/8fcc6a862f2e7b94eb4221fd0819ddba3d30ab26",
-                "reference": "8fcc6a862f2e7b94eb4221fd0819ddba3d30ab26",
+                "url": "https://api.github.com/repos/filp/whoops/zipball/89dabca1490bc77dbcab41c2b20968c7e44bf7c3",
+                "reference": "89dabca1490bc77dbcab41c2b20968c7e44bf7c3",
                 "shasum": ""
             },
             "require": {
@@ -6956,7 +6941,7 @@
             ],
             "support": {
                 "issues": "https://github.com/filp/whoops/issues",
-                "source": "https://github.com/filp/whoops/tree/2.18.1"
+                "source": "https://github.com/filp/whoops/tree/2.18.2"
             },
             "funding": [
                 {
@@ -6964,7 +6949,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2025-06-03T18:56:14+00:00"
+            "time": "2025-06-11T20:42:19+00:00"
         },
         {
             "name": "hamcrest/hamcrest-php",
@@ -9361,5 +9346,5 @@
         "php": "^8.1"
     },
     "platform-dev": [],
-    "plugin-api-version": "2.3.0"
+    "plugin-api-version": "2.6.0"
 }
