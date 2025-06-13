@@ -15,13 +15,6 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-// Route::prefix('payment')->group(function () {
-//     Route::post('qris/create', [PaymentController::class, 'createQrisPayment']);
-//     Route::post('transfer/create', [PaymentController::class, 'createTransferPayment']);
-//     Route::post('cash/create', [PaymentController::class, 'createCashPayment']);
-//     Route::get('status/{paymentId}', [PaymentController::class, 'getPaymentStatus']);
-// });
-// Route::post('xendit/webhook', [PaymentController::class, 'handleXenditWebhook']);
 Route::post('payments/{examinationId}', [PaymentController::class, 'createInvoicePayment'])->name('payments.create');
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
