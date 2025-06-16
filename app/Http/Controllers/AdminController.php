@@ -7,69 +7,89 @@ use App\Models\Patient;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Spatie\Permission\Models\Role; // Untuk manajemen role
+use Spatie\Permission\Models\Role;
 use Spatie\MediaLibrary\MediaCollections\Exceptions\FileDoesNotExist;
 use Spatie\MediaLibrary\MediaCollections\Exceptions\FileIsTooBig;
-use Maatwebsite\Excel\Facades\Excel; // Untuk export Excel
-use App\Exports\PatientsExport; // Anda perlu membuat ini
-use App\Exports\ExaminationsExport; // Anda perlu membuat ini
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\PatientsExport;
+use App\Exports\ExaminationsExport;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class AdminController extends Controller
 {
-    /**
-     * Tampilkan dashboard untuk staf (admin, cs, perawat).
-     */
+    // ===== DASHBOARD =====
+
     public function dashboard()
     {
-        // Statistik umum untuk dashboard staf
         $totalPatients = Patient::count();
-        $pendingExaminations = Examination::where('status', 'pending')->count();
-        $completedExaminations = Examination::where('status', 'completed')->count();
+        $pendingExaminations = Examination::whereIn('status', ['pending_payment', 'pending_cash_payment'])->count();
+        $completedExaminations = Examination::whereIn('status', ['completed', 'paid'])->count();
         $totalUsers = User::count();
 
-        return view('staff.dashboard', compact('totalPatients', 'pendingExaminations', 'completedExaminations', 'totalUsers'));
+        return view('staff.dashboard', compact(
+            'totalPatients',
+            'pendingExaminations',
+            'completedExaminations',
+            'totalUsers'
+        ));
     }
 
-    // --- Manajemen Data Pasien ---
+    // ===== PATIENT MANAGEMENT =====
 
-    /**
-     * Tampilkan daftar semua pasien.
-     * Menggunakan Yajra Datatables (Anda perlu mengintegrasikan JS/HTML di view)
-     */
     public function indexPatients(Request $request)
     {
-        // Ini adalah contoh sederhana. Untuk Yajra Datatables, Anda biasanya akan membuat DataTables class.
-        if ($request->ajax()) {
-            $data = Patient::select('*');
-            return datatables()->of($data)
-                    ->addIndexColumn()
-                    ->addColumn('action', function($row){
-                           $btn = '<a href="'.route('staff.patients.show', $row->id).'" class="edit btn btn-info btn-sm">Lihat</a>';
-                           $btn .= ' <a href="'.route('staff.patients.edit', $row->id).'" class="edit btn btn-primary btn-sm">Edit</a>';
-                           $btn .= ' <button class="btn btn-danger btn-sm delete-patient" data-id="'.$row->id.'">Hapus</button>';
-                            return $btn;
-                    })
-                    ->rawColumns(['action'])
-                    ->make(true);
+        Log::info('indexPatients called', [
+            'method' => $request->method(),
+            'search' => $request->get('search'),
+            'page' => $request->get('page')
+        ]);
+
+        $query = Patient::query();
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', '%' . $search . '%')
+                    ->orWhere('email', 'like', '%' . $search . '%')
+                    ->orWhere('phone_number', 'like', '%' . $search . '%');
+            });
         }
 
-        return view('staff.patients.index');
+        $sortBy = $request->get('sort_by', 'name');
+        $sortOrder = $request->get('sort_order', 'asc');
+        $allowedSorts = ['name', 'age', 'date_of_birth', 'gender', 'created_at'];
+
+        if (!in_array($sortBy, $allowedSorts)) {
+            $sortBy = 'name';
+        }
+
+        if (!in_array($sortOrder, ['asc', 'desc'])) {
+            $sortOrder = 'asc';
+        }
+
+        $query->orderBy($sortBy, $sortOrder);
+        $patients = $query->paginate($request->get('per_page', 10));
+
+        $statistics = [
+            'totalPatients' => Patient::count(),
+            'registeredPatients' => Patient::whereNotNull('user_id')->count(),
+            'newPatientsThisMonth' => Patient::whereMonth('created_at', now()->month)
+                ->whereYear('created_at', now()->year)
+                ->count()
+        ];
+
+        return view('staff.patients.index', array_merge(compact('patients'), $statistics));
     }
 
-    /**
-     * Tampilkan formulir untuk membuat pasien baru.
-     */
     public function createPatient()
     {
         return view('staff.patients.create');
     }
 
-    /**
-     * Simpan data pasien baru.
-     */
     public function storePatient(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'nullable|email|unique:patients,email',
             'phone_number' => 'nullable|string|max:20',
@@ -77,41 +97,31 @@ class AdminController extends Controller
             'address' => 'nullable|string|max:255',
             'date_of_birth' => 'nullable|date',
             'gender' => 'nullable|in:Laki-laki,Perempuan,Lainnya',
-            // Jika ada user_id yang diisi dari form (misal: terhubung dengan user yang sudah ada)
             'user_id' => 'nullable|exists:users,id',
         ]);
 
-        Patient::create($request->all());
+        Patient::create($validated);
 
-        return redirect()->route('staff.patients.index')->with('success', 'Data pasien berhasil ditambahkan!');
+        return redirect()->route('staff.patients.index')
+            ->with('success', 'Data pasien berhasil ditambahkan!');
     }
 
-    /**
-     * Tampilkan detail pasien.
-     */
     public function showPatient(Patient $patient)
     {
-        // Memuat relasi examinations untuk ditampilkan detail jadwal penjemputan
         $patient->load('examinations');
         return view('staff.patients.show', compact('patient'));
     }
 
-    /**
-     * Tampilkan formulir untuk mengedit data pasien.
-     */
     public function editPatient(Patient $patient)
     {
         return view('staff.patients.edit', compact('patient'));
     }
 
-    /**
-     * Perbarui data pasien.
-     */
     public function updatePatient(Request $request, Patient $patient)
     {
-        $request->validate([
+        $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'nullable|email|unique:patients,email,'.$patient->id,
+            'email' => 'nullable|email|unique:patients,email,' . $patient->id,
             'phone_number' => 'nullable|string|max:20',
             'age' => 'required|integer|min:1',
             'address' => 'nullable|string|max:255',
@@ -119,162 +129,229 @@ class AdminController extends Controller
             'gender' => 'nullable|in:Laki-laki,Perempuan,Lainnya',
         ]);
 
-        $patient->update($request->all());
+        $patient->update($validated);
 
-        return redirect()->route('staff.patients.index')->with('success', 'Data pasien berhasil diperbarui!');
+        return redirect()->route('staff.patients.index')
+            ->with('success', 'Data pasien berhasil diperbarui!');
     }
 
-    /**
-     * Hapus data pasien.
-     */
     public function destroyPatient(Patient $patient)
     {
         $patient->delete();
-        return redirect()->route('staff.patients.index')->with('success', 'Data pasien berhasil dihapus!');
+
+        return redirect()->route('staff.patients.index')
+            ->with('success', 'Data pasien berhasil dihapus!');
     }
 
-    // --- Manajemen Pemeriksaan ---
+    // ===== EXAMINATION MANAGEMENT =====
 
-    /**
-     * Tampilkan daftar semua pemeriksaan.
-     * Menggunakan Yajra Datatables.
-     */
     public function indexExaminations(Request $request)
     {
-        if ($request->ajax()) {
-            $data = Examination::with('patient')->select('examinations.*'); // Load relasi patient
-            return datatables()->of($data)
-                    ->addIndexColumn()
-                    ->addColumn('patient_name', function(Examination $examination) {
-                        return $examination->patient->name;
-                    })
-                    ->addColumn('action', function($row){
-                           $btn = '<a href="'.route('staff.examinations.show', $row->id).'" class="edit btn btn-info btn-sm">Lihat</a>';
-                           $btn .= ' <a href="'.route('staff.examinations.upload_result.form', $row->id).'" class="edit btn btn-warning btn-sm">Upload Hasil</a>';
-                           // Tambahkan tombol edit/hapus pemeriksaan jika diperlukan
-                            return $btn;
-                    })
-                    ->rawColumns(['action'])
-                    ->make(true);
+        $query = Examination::with('patient');
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('patient', function ($patientQuery) use ($search) {
+                    $patientQuery->where('name', 'like', '%' . $search . '%')
+                        ->orWhere('email', 'like', '%' . $search . '%')
+                        ->orWhere('phone_number', 'like', '%' . $search . '%');
+                })->orWhere('id', 'like', '%' . $search . '%')
+                    ->orWhere('status', 'like', '%' . $search . '%')
+                    ->orWhere('payment_method', 'like', '%' . $search . '%');
+            });
         }
-        return view('staff.examinations.index');
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('payment_status')) {
+            $query->where('payment_status', $request->payment_status);
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('scheduled_date', '>=', $request->date_from);
+        }
+
+        if ($request->filled('date_to')) {
+            $query->whereDate('scheduled_date', '<=', $request->date_to);
+        }
+
+        $sortBy = $request->get('sort_by', 'created_at');
+        $sortOrder = $request->get('sort_order', 'desc');
+        $allowedSorts = ['created_at', 'scheduled_date', 'status', 'payment_status', 'final_price'];
+
+        if (!in_array($sortBy, $allowedSorts)) {
+            $sortBy = 'created_at';
+        }
+
+        if (!in_array($sortOrder, ['asc', 'desc'])) {
+            $sortOrder = 'desc';
+        }
+
+        $query->orderBy($sortBy, $sortOrder);
+        $examinations = $query->paginate($request->get('per_page', 10));
+
+        $statistics = [
+            'totalExaminations' => Examination::count(),
+            'pendingPayment' => Examination::whereIn('status', ['pending_payment', 'pending_cash_payment'])->count(),
+            'completed' => Examination::where('status', 'completed')->count(),
+            'scheduled' => Examination::where('status', 'scheduled')->count(),
+            'totalRevenue' => Examination::where('payment_status', 'paid')->sum('final_price'),
+            'thisMonthExaminations' => Examination::whereMonth('created_at', now()->month)
+                ->whereYear('created_at', now()->year)
+                ->count()
+        ];
+
+        $statusOptions = [
+            'created',
+            'pending_payment',
+            'pending_cash_payment',
+            'paid',
+            'expired_payment',
+            'scheduled',
+            'in_progress',
+            'completed',
+            'cancelled'
+        ];
+
+        $paymentStatusOptions = ['pending', 'paid', 'failed'];
+
+        return view('staff.examinations.index', array_merge(
+            compact('examinations', 'statusOptions', 'paymentStatusOptions'),
+            $statistics
+        ));
     }
 
-    /**
-     * Tampilkan detail pemeriksaan.
-     */
     public function showExaminationDetail(Examination $examination)
     {
-        $examination->load('patient'); // Memuat relasi patient
+        $examination->load('patient');
         return view('staff.examinations.show', compact('examination'));
     }
 
-    /**
-     * Tampilkan formulir untuk mengunggah hasil pemeriksaan.
-     */
     public function showUploadResultForm(Examination $examination)
     {
         return view('staff.examinations.upload_result_form', compact('examination'));
     }
 
-    /**
-     * Unggah file hasil pemeriksaan (PDF) menggunakan Spatie Media Library.
-     */
     public function uploadResult(Request $request, Examination $examination)
     {
         $request->validate([
-            'result_file' => 'required|mimes:pdf|max:10240', // Max 10MB
+            'result_file' => 'required|file|mimes:pdf|max:10240', // tambahkan 'file' rule
         ]);
 
         try {
-            // Hapus hasil sebelumnya jika ada
+            // Hapus media yang sudah ada di collection 'results'
             $examination->clearMediaCollection('results');
 
-            // Tambahkan file baru ke koleksi 'results'
-            $examination->addMediaFromRequest('result_file')
-                        ->usingFileName(uniqid() . '.' . $request->file('result_file')->getClientOriginalExtension())
-                        ->toMediaCollection('results');
+            // Upload file baru
+            $mediaItem = $examination
+                ->addMediaFromRequest('result_file')
+                ->usingFileName(uniqid() . '_result.' . $request->file('result_file')->getClientOriginalExtension())
+                ->usingName('Hasil Pemeriksaan') // tambahkan nama yang lebih deskriptif
+                ->toMediaCollection('results');
 
-            // Perbarui status pemeriksaan
+            // Update status examination
             $examination->update([
                 'result_available' => true,
-                'status' => 'completed', // Otomatis menjadi completed setelah hasil diupload
+                'status' => 'completed',
             ]);
 
-            return redirect()->route('staff.examinations.index')->with('success', 'Hasil pemeriksaan berhasil diunggah dan status diperbarui!');
+            // Log aktivitas (opsional)
+            Log::info('Result uploaded successfully', [
+                'examination_id' => $examination->id,
+                'media_id' => $mediaItem->id,
+                'uploaded_by' => auth()->id()
+            ]);
 
-        } catch (FileIsTooBig $e) {
-            return redirect()->back()->with('error', 'Ukuran file terlalu besar. Maksimal 10MB.');
-        } catch (FileDoesNotExist $e) {
-            return redirect()->back()->with('error', 'File tidak ditemukan atau rusak.');
+            return redirect()->route('staff.examinations.index')
+                ->with('success', 'Hasil pemeriksaan berhasil diunggah dan status diperbarui!');
+        } catch (\Spatie\MediaLibrary\MediaCollections\Exceptions\FileIsTooBig $e) {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Ukuran file terlalu besar. Maksimal 10MB.');
+        } catch (\Spatie\MediaLibrary\MediaCollections\Exceptions\FileDoesNotExist $e) {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'File tidak ditemukan atau rusak.');
+        } catch (\Spatie\MediaLibrary\MediaCollections\Exceptions\FileCannotBeAdded $e) {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'File tidak dapat ditambahkan: ' . $e->getMessage());
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Terjadi kesalahan saat mengunggah file: ' . $e->getMessage());
+            Log::error('Upload result failed', [
+                'examination_id' => $examination->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Terjadi kesalahan saat mengunggah file. Silakan coba lagi.');
         }
     }
 
-    /**
-     * Menandai hasil pemeriksaan sudah tersedia (jika tidak otomatis setelah upload).
-     */
     public function markResultAvailable(Examination $examination)
     {
-        $examination->update(['result_available' => true]);
-        return redirect()->back()->with('success', 'Hasil pemeriksaan berhasil ditandai sebagai tersedia.');
+        try {
+            // Validasi apakah ada file hasil yang sudah diupload
+            if (!$examination->hasMedia('results')) {
+                return redirect()->back()
+                    ->with('error', 'Tidak dapat menandai hasil tersedia karena belum ada file yang diunggah.');
+            }
+
+            $examination->update(['result_available' => true]);
+
+            return redirect()->back()
+                ->with('success', 'Hasil pemeriksaan berhasil ditandai sebagai tersedia.');
+        } catch (\Exception $e) {
+            Log::error('Mark result available failed', [
+                'examination_id' => $examination->id,
+                'error' => $e->getMessage()
+            ]);
+
+            return redirect()->back()
+                ->with('error', 'Terjadi kesalahan saat memperbarui status.');
+        }
     }
+    // ===== DATA EXPORT =====
 
-    // --- Export Data (Maatwebsite Laravel Excel) ---
-
-    /**
-     * Export data pasien ke Excel.
-     */
     public function exportPatients()
     {
-        // Pastikan Anda sudah membuat App\Exports\PatientsExport.php
         return Excel::download(new PatientsExport, 'data_pasien.xlsx');
     }
 
-    /**
-     * Export data pemeriksaan ke Excel.
-     */
     public function exportExaminations()
     {
-        // Pastikan Anda sudah membuat App\Exports\ExaminationsExport.php
         return Excel::download(new ExaminationsExport, 'data_pemeriksaan.xlsx');
     }
 
+    // ===== USER & ROLE MANAGEMENT =====
 
-    // --- Manajemen User & Role (Khusus Admin) ---
-
-    /**
-     * Tampilkan daftar semua user.
-     */
     public function indexUsers()
     {
-        $users = User::with('roles')->paginate(10); // Load relasi role
+        $users = User::with('roles')->paginate(10);
         return view('staff.users.index', compact('users'));
     }
 
-    /**
-     * Tampilkan formulir untuk mengedit peran user.
-     */
     public function editUserRole(User $user)
     {
-        $roles = Role::all(); // Ambil semua role yang tersedia
+        $roles = Role::all();
         return view('staff.users.edit_role', compact('user', 'roles'));
     }
 
-    /**
-     * Perbarui peran user.
-     */
     public function updateUserRole(Request $request, User $user)
     {
-        $request->validate([
+        $validated = $request->validate([
             'roles' => 'required|array',
-            'roles.*' => 'exists:roles,name', // Pastikan role yang dipilih ada di tabel roles
+            'roles.*' => 'exists:roles,name',
         ]);
 
-        $user->syncRoles($request->input('roles')); // Sinkronkan peran user
-        $user->update(['role' => $request->input('roles')[0]]); // Update kolom 'role' di tabel users
+        $user->syncRoles($validated['roles']);
+        $user->update(['role' => $validated['roles'][0]]);
 
-        return redirect()->route('staff.users.index')->with('success', 'Peran pengguna berhasil diperbarui!');
+        return redirect()->route('staff.users.index')
+            ->with('success', 'Peran pengguna berhasil diperbarui!');
     }
 }
