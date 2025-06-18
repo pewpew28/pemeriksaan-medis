@@ -215,7 +215,7 @@ class PaymentController extends Controller
 
             // Update examination status to completed if not already in a final state
             if (!in_array($examination->status, ['completed', 'paid'])) {
-                $examination->update(['status' => 'completed', 'payment_status' => 'paid']);
+                $examination->update(['status' => 'scheduled', 'payment_status' => 'paid']);
 
                 Log::info('Examination status updated to completed', [
                     'examination_id' => $examinationId,

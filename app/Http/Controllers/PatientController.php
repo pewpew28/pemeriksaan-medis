@@ -191,7 +191,7 @@ class PatientController extends Controller
         }
 
         $rules = [
-            'service_item_id' => 'required|exists:service_items,id', // Validasi service_item_id
+            'service_item_id' => 'required|exists:service_items,id',
             'scheduled_date' => 'required|date|after_or_equal:today',
             'scheduled_time' => 'required|date_format:H:i',
             'pickup_requested' => 'boolean',
@@ -212,16 +212,21 @@ class PatientController extends Controller
 
         $serviceItem = ServiceItem::findOrFail($validatedData['service_item_id']);
 
-        // Create examination with UUID
+        // Generate unique examination ID
+        $examinationId = $this->generateExaminationId($user->id, $validatedData['service_item_id']);
+
+        // Create examination with custom ID
         $examination = new Examination($validatedData);
-        $examination->id = (string) Str::uuid(); // Generate UUID for examination
+        $examination->id = $examinationId;
         $examination->patient_id = $patient->id;
         $examination->status = 'created';
         $examination->result_available = false;
         $examination->payment_status = 'pending';
-        $examination->final_price = $serviceItem->price; // Simpan harga dari service item
+        $examination->final_price = $serviceItem->price;
+
         // Jika ada biaya penjemputan, bisa ditambahkan di sini
         // $examination->final_price += $request->boolean('pickup_requested') ? 50000 : 0;
+
         $examination->save();
 
         return redirect()->route('pasien.examinations.index')->with('success', 'Pendaftaran pemeriksaan berhasil diajukan!');
@@ -329,5 +334,79 @@ class PatientController extends Controller
         }
 
         return $phoneNumber;
+    }
+
+    private function generateExaminationId($userId, $serviceItemId)
+    {
+        // Batasi user_id dan service_item_id untuk menghemat digit
+        $userIdPart = str_pad($userId % 999, 2, '0', STR_PAD_LEFT); // 2 digit (01-99)
+        $serviceItemPart = str_pad($serviceItemId % 99, 2, '0', STR_PAD_LEFT); // 2 digit (01-99)
+
+        // Tanggal dalam format YYMM (4 digit) atau YMD (3-4 digit)
+        $datePart = date('ymd'); // 6 digit: 250618 untuk 18 Juni 2025
+
+        // Ambil 4 digit terakhir dari tanggal (MMDD)
+        $shortDatePart = substr($datePart, 2, 4); // 0618
+
+        // Buat base ID (6 digit)
+        $baseId = $userIdPart . $serviceItemPart . $shortDatePart;
+
+        // Cek apakah ID sudah ada, jika ya tambahkan sequence number
+        $finalId = $baseId;
+        $sequence = 1;
+
+        while (Examination::where('id', $finalId)->exists()) {
+            if (strlen($baseId . $sequence) <= 9) {
+                $finalId = $baseId . $sequence;
+            } else {
+                // Jika melebihi 9 digit, gunakan format yang lebih pendek
+                $shortBaseId = $userIdPart . $serviceItemPart . substr($shortDatePart, 2, 2); // 4 digit
+                $finalId = $shortBaseId . str_pad($sequence, 2, '0', STR_PAD_LEFT);
+            }
+            $sequence++;
+
+            // Failsafe: jika sequence terlalu tinggi, gunakan timestamp
+            if ($sequence > 999) {
+                $finalId = $userIdPart . $serviceItemPart . substr(time(), -3);
+                break;
+            }
+        }
+
+        return $finalId;
+    }
+
+    /**
+     * Alternative method - Simpler approach
+     * Generate examination ID with format: {user_id}{service_id}{MMDD}{seq}
+     */
+    private function generateSimpleExaminationId($userId, $serviceItemId)
+    {
+        // Format: U{user_id}S{service_id}D{MMDD}
+        $userPart = $userId % 99; // 1-2 digit
+        $servicePart = $serviceItemId % 99; // 1-2 digit  
+        $datePart = date('md'); // 4 digit (bulan + tanggal)
+
+        $baseId = $userPart . $servicePart . $datePart;
+
+        // Pastikan minimal 6 digit dengan menambah sequence jika perlu
+        $sequence = 1;
+        $finalId = $baseId;
+
+        // Jika kurang dari 6 digit, tambahkan sequence
+        if (strlen($finalId) < 6) {
+            $finalId = $baseId . str_pad($sequence, 6 - strlen($baseId), '0', STR_PAD_LEFT);
+        }
+
+        // Cek keunikan
+        while (Examination::where('id', $finalId)->exists() && strlen($finalId) <= 9) {
+            $sequence++;
+            if (strlen($baseId . $sequence) <= 9) {
+                $finalId = $baseId . $sequence;
+            } else {
+                break;
+            }
+        }
+
+        return $finalId;
     }
 }
