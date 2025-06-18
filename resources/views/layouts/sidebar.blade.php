@@ -35,11 +35,7 @@
     <div class="flex items-center justify-center h-20 border-b border-blue-500 bg-blue-700">
         <div class="flex items-center space-x-3">
             <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center">
-                <svg class="w-7 h-7 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd"
-                        d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm0 4a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1V8zm8 0a1 1 0 011-1h4a1 1 0 011 1v2a1 1 0 01-1 1h-4a1 1 0 01-1-1V8z"
-                        clip-rule="evenodd" />
-                </svg>
+                <img src="{{ asset('assets/icon/healthcare-icon.png') }}" alt="">
             </div>
             <div>
                 <h1 class="text-white font-bold text-xl">HealthCare+</h1>
@@ -201,9 +197,9 @@
                 <span class="ml-4 text-sm">Profil Saya</span>
             </a>
 
-            <form method="POST" action="{{ route('logout') }}">
+            <form method="POST" action="{{ route('logout') }}" id="logout-form">
                 @csrf
-                <button type="submit" onclick="return confirm('Yakin ingin keluar?')"
+                <button type="button" onclick="confirmLogout()"
                     class="w-full flex items-center px-4 py-2 text-red-200 hover:text-white hover:bg-red-600 rounded-lg transition-all duration-200">
                     <i class="fas fa-sign-out-alt w-5"></i>
                     <span class="ml-4 text-sm">Keluar</span>
@@ -212,3 +208,83 @@
         </div>
     </div>
 </aside>
+
+@push('scripts')
+<script>
+function confirmLogout() {
+    Swal.fire({
+        title: 'Konfirmasi Keluar',
+        text: 'Apakah Anda yakin ingin keluar dari sistem?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Ya, Keluar',
+        cancelButtonText: 'Batal',
+        reverseButtons: true,
+        customClass: {
+            popup: 'swal-custom-popup',
+            title: 'swal-custom-title',
+            content: 'swal-custom-content'
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Tampilkan loading
+            Swal.fire({
+                title: 'Sedang Logout...',
+                text: 'Mohon tunggu sebentar',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                showConfirmButton: false,
+                didOpen: () => {
+                    Swal.showLoading()
+                }
+            });
+            
+            // Submit form logout
+            document.getElementById('logout-form').submit();
+        }
+    });
+}
+</script>
+
+<style>
+.swal-custom-popup {
+    border-radius: 15px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+}
+
+.swal-custom-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.swal-custom-content {
+    font-size: 1rem;
+    color: #4b5563;
+}
+
+/* Custom animation for SweetAlert2 */
+.swal2-show {
+    animation: swal2-show 0.3s ease-out;
+}
+
+@keyframes swal2-show {
+    0% {
+        transform: scale(0.7);
+        opacity: 0;
+    }
+    45% {
+        transform: scale(1.05);
+        opacity: 1;
+    }
+    80% {
+        transform: scale(0.95);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+</style>
+@endpush
