@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Examination;
 use App\Models\Patient;
 use App\Models\User;
+use App\Models\ServiceItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Role;
@@ -26,12 +27,16 @@ class AdminController extends Controller
         $pendingExaminations = Examination::whereIn('status', ['pending_payment', 'pending_cash_payment'])->count();
         $completedExaminations = Examination::whereIn('status', ['completed', 'paid'])->count();
         $totalUsers = User::count();
+        $totalServiceItems = ServiceItem::count();
+        $activeServiceItems = ServiceItem::where('is_active', true)->count();
 
         return view('staff.dashboard', compact(
             'totalPatients',
             'pendingExaminations',
             'completedExaminations',
-            'totalUsers'
+            'totalUsers',
+            'totalServiceItems',
+            'activeServiceItems'
         ));
     }
 
@@ -143,11 +148,138 @@ class AdminController extends Controller
             ->with('success', 'Data pasien berhasil dihapus!');
     }
 
+    // ===== SERVICE ITEM MANAGEMENT =====
+
+    public function indexServiceItems(Request $request)
+    {
+        $query = ServiceItem::query();
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', '%' . $search . '%')
+                    ->orWhere('description', 'like', '%' . $search . '%');
+            });
+        }
+
+        if ($request->filled('status')) {
+            $status = $request->status === 'active' ? true : false;
+            $query->where('is_active', $status);
+        }
+
+        $sortBy = $request->get('sort_by', 'name');
+        $sortOrder = $request->get('sort_order', 'asc');
+        $allowedSorts = ['name', 'price', 'is_active', 'created_at'];
+
+        if (!in_array($sortBy, $allowedSorts)) {
+            $sortBy = 'name';
+        }
+
+        if (!in_array($sortOrder, ['asc', 'desc'])) {
+            $sortOrder = 'asc';
+        }
+
+        $query->orderBy($sortBy, $sortOrder);
+        $serviceItems = $query->paginate($request->get('per_page', 10));
+
+        $statistics = [
+            'totalServiceItems' => ServiceItem::count(),
+            'activeServiceItems' => ServiceItem::where('is_active', true)->count(),
+            'inactiveServiceItems' => ServiceItem::where('is_active', false)->count(),
+            'averagePrice' => ServiceItem::where('is_active', true)->avg('price') ?? 0,
+        ];
+
+        return view('staff.service.index', array_merge(compact('serviceItems'), $statistics));
+    }
+
+    public function createServiceItem()
+    {
+        return view('staff.service.create');
+    }
+
+    public function storeServiceItem(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string|max:1000',
+            'price' => 'required|numeric|min:0',
+            'is_active' => 'boolean',
+        ]);
+
+        // Set default value for is_active if not provided
+        $validated['is_active'] = $request->boolean('is_active', true);
+
+        ServiceItem::create($validated);
+
+        return redirect()->route('staff.service.index')
+            ->with('success', 'Layanan berhasil ditambahkan!');
+    }
+
+    public function showServiceItem(ServiceItem $serviceItem)
+    {
+        $serviceItem->load('examinations.patient');
+        
+        $statistics = [
+            'totalExaminations' => $serviceItem->examinations->count(),
+            'completedExaminations' => $serviceItem->examinations->where('status', 'completed')->count(),
+            'totalRevenue' => $serviceItem->examinations->where('payment_status', 'paid')->sum('final_price'),
+            'averagePrice' => $serviceItem->examinations->where('payment_status', 'paid')->avg('final_price') ?? 0,
+        ];
+
+        return view('staff.service.show', compact('serviceItem', 'statistics'));
+    }
+
+    public function editServiceItem(ServiceItem $serviceItem)
+    {
+        return view('staff.service.edit', compact('serviceItem'));
+    }
+
+    public function updateServiceItem(Request $request, ServiceItem $serviceItem)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string|max:1000',
+            'price' => 'required|numeric|min:0',
+            'is_active' => 'boolean',
+        ]);
+
+        $validated['is_active'] = $request->boolean('is_active');
+
+        $serviceItem->update($validated);
+
+        return redirect()->route('staff.service.index')
+            ->with('success', 'Layanan berhasil diperbarui!');
+    }
+
+    public function destroyServiceItem(ServiceItem $serviceItem)
+    {
+        // Check if service item has examinations
+        if ($serviceItem->examinations()->count() > 0) {
+            return redirect()->back()
+                ->with('error', 'Layanan tidak dapat dihapus karena masih memiliki data pemeriksaan terkait.');
+        }
+
+        $serviceItem->delete();
+
+        return redirect()->route('staff.service.index')
+            ->with('success', 'Layanan berhasil dihapus!');
+    }
+
+    public function toggleServiceItemStatus(ServiceItem $serviceItem)
+    {
+        $serviceItem->update(['is_active' => !$serviceItem->is_active]);
+
+        $status = $serviceItem->is_active ? 'diaktifkan' : 'dinonaktifkan';
+        
+        return redirect()->back()
+            ->with('success', "Layanan berhasil {$status}!");
+    }
+
     // ===== EXAMINATION MANAGEMENT =====
 
     public function indexExaminations(Request $request)
     {
-        $query = Examination::with('patient');
+        $query = Examination::with(['patient', 'serviceItem']);
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -226,7 +358,7 @@ class AdminController extends Controller
 
     public function showExaminationDetail(Examination $examination)
     {
-        $examination->load('patient');
+        $examination->load(['patient', 'serviceItem']);
         return view('staff.examinations.show', compact('examination'));
     }
 
@@ -315,6 +447,7 @@ class AdminController extends Controller
                 ->with('error', 'Terjadi kesalahan saat memperbarui status.');
         }
     }
+
     // ===== DATA EXPORT =====
 
     public function exportPatients()

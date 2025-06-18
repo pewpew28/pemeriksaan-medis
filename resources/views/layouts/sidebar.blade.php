@@ -85,6 +85,10 @@
                 Kelola Pasien
             </x-sidebar-link>
 
+            <x-sidebar-link :href="route('staff.service.index')" :active="request()->routeIs('staff.examinations*')" icon="fas fa-file-medical">
+                Kelola Service
+            </x-sidebar-link>
+
             <x-sidebar-link :href="route('staff.examinations.index')" :active="request()->routeIs('staff.examinations*')" icon="fas fa-file-medical">
                 Kelola Pemeriksaan
             </x-sidebar-link>

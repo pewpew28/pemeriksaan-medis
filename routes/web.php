@@ -98,6 +98,16 @@ Route::middleware(['auth'])->prefix('staff')->name('staff.')->group(function () 
         // Melihat daftar pemeriksaan pasien (untuk CS juga)
         Route::get('/examinations', [AdminController::class, 'indexExaminations'])->name('examinations.index');
         Route::get('/examinations/{examination}', [AdminController::class, 'showExaminationDetail'])->name('examinations.show');
+
+        // Di web.php atau routes untuk staff
+        Route::get('service-items', [AdminController::class, 'indexServiceItems'])->name('service.index');
+        Route::get('service-items/create', [AdminController::class, 'createServiceItem'])->name('service.create');
+        Route::post('service-items', [AdminController::class, 'storeServiceItem'])->name('service.store');
+        Route::get('service-items/{serviceItem}', [AdminController::class, 'showServiceItem'])->name('service.show');
+        Route::get('service-items/{serviceItem}/edit', [AdminController::class, 'editServiceItem'])->name('service.edit');
+        Route::put('service-items/{serviceItem}', [AdminController::class, 'updateServiceItem'])->name('service.update');
+        Route::delete('service-items/{serviceItem}', [AdminController::class, 'destroyServiceItem'])->name('service.destroy');
+        Route::patch('service-items/{serviceItem}/toggle-status', [AdminController::class, 'toggleServiceItemStatus'])->name('service.toggle_status');
     });
 
     // Input dan Upload Hasil Pemeriksaan

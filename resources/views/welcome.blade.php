@@ -96,13 +96,8 @@
                     <div class="shrink-0 flex items-center">
                         <div class="flex items-center space-x-3">
                             <div
-                                class="w-10 h-10 bg-gradient-to-r from-blue-600 to-indigo-700 rounded-lg flex items-center justify-center">
-                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z">
-                                    </path>
-                                </svg>
+                                class="w-10 h-10 bg-white border border-blue-600 rounded-lg flex items-center justify-center">
+                                <img src="{{ asset('assets/icon/healthcare-icon.png') }}" alt="">
                             </div>
                             <span class="text-xl font-bold gradient-text">Healthcare+</span>
                         </div>
@@ -179,7 +174,7 @@
             </p>
 
             <div class="flex flex-col sm:flex-row gap-4 justify-center items-center animate-fade-in-up delay-600">
-                <a href="#"
+                <a href="{{ route('login') }}"
                     class="bg-white text-blue-700 hover:bg-gray-50 px-8 py-4 rounded-full text-lg font-semibold shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 flex items-center space-x-2">
                     <span>Mulai Konsultasi</span>
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -505,7 +500,7 @@
             </p>
 
             <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                <a href="#"
+                <a href="{{ route('register') }}"
                     class="bg-white text-blue-700 hover:bg-gray-50 px-10 py-4 rounded-full text-xl font-semibold shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 flex items-center space-x-2">
                     <span>Daftar Gratis Sekarang</span>
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
