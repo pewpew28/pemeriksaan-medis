@@ -424,12 +424,12 @@
                                                 </div>
 
                                                 <div class="form-group">
-                                                    <label for="pickup_contact"
-                                                        class="block text-sm font-semibold text-gray-700 mb-2">Contact</label>
-                                                    <input type="tel" name="pickup_contact" id="pickup_contact"
+                                                    <label for="pickup_location_map"
+                                                        class="block text-sm font-semibold text-gray-700 mb-2">Maps</label>
+                                                    <input type="tel" name="pickup_location_map" id="pickup_location_map"
                                                         class="block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition duration-200"
-                                                        placeholder="Nomor telepon untuk koordinasi penjemputan"
-                                                        value="{{ old('pickup_contact') }}">
+                                                        placeholder="Link gmaps untuk penjemputan"
+                                                        value="{{ old('pickup_location_map') }}">
                                                 </div>
                                             </div>
 
