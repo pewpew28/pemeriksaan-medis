@@ -16,8 +16,8 @@ class DatabaseSeeder extends Seeder
             RoleAndPermissionSeeder::class, // Ini penting dipanggil pertama untuk role
             UserSeeder::class,
             PatientSeeder::class,
+            ServiceDataSeeder::class,
             ExaminationSeeder::class,
-            ServiceItemsSeeder::class
         ]);
     }
 }

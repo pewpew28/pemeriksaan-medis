@@ -6,6 +6,7 @@ use App\Models\Examination;
 use App\Models\Patient;
 use App\Models\User;
 use App\Models\ServiceItem;
+use App\Models\ServiceCategory; // Tambah model baru
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Role;
@@ -148,16 +149,17 @@ class AdminController extends Controller
             ->with('success', 'Data pasien berhasil dihapus!');
     }
 
-    // ===== SERVICE ITEM MANAGEMENT =====
+    // ===== SERVICE CATEGORY MANAGEMENT =====
 
-    public function indexServiceItems(Request $request)
+    public function indexServiceCategories(Request $request)
     {
-        $query = ServiceItem::query();
+        $query = ServiceCategory::withCount('serviceItems');
 
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', '%' . $search . '%')
+                    ->orWhere('code', 'like', '%' . $search . '%')
                     ->orWhere('description', 'like', '%' . $search . '%');
             });
         }
@@ -167,12 +169,140 @@ class AdminController extends Controller
             $query->where('is_active', $status);
         }
 
-        $sortBy = $request->get('sort_by', 'name');
+        $sortBy = $request->get('sort_by', 'sort_order');
         $sortOrder = $request->get('sort_order', 'asc');
-        $allowedSorts = ['name', 'price', 'is_active', 'created_at'];
+        $allowedSorts = ['name', 'code', 'sort_order', 'is_active', 'created_at'];
 
         if (!in_array($sortBy, $allowedSorts)) {
-            $sortBy = 'name';
+            $sortBy = 'sort_order';
+        }
+
+        if (!in_array($sortOrder, ['asc', 'desc'])) {
+            $sortOrder = 'asc';
+        }
+
+        $query->orderBy($sortBy, $sortOrder);
+        $categories = $query->paginate($request->get('per_page', 10));
+
+        $statistics = [
+            'totalCategories' => ServiceCategory::count(),
+            'activeCategories' => ServiceCategory::where('is_active', true)->count(),
+            'inactiveCategories' => ServiceCategory::where('is_active', false)->count(),
+        ];
+
+        return view('staff.service.categories.index', array_merge(compact('categories'), $statistics));
+    }
+
+    public function createServiceCategory()
+    {
+        return view('staff.service.categories.create');
+    }
+
+    public function storeServiceCategory(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255|unique:service_categories,name',
+            'code' => 'nullable|string|max:10|unique:service_categories,code',
+            'description' => 'nullable|string|max:1000',
+            'sort_order' => 'integer|min:0',
+            'is_active' => 'boolean',
+        ]);
+
+        $validated['is_active'] = $request->boolean('is_active', true);
+        $validated['sort_order'] = $validated['sort_order'] ?? 0;
+
+        ServiceCategory::create($validated);
+
+        return redirect()->route('staff.service.categories.index')
+            ->with('success', 'Kategori layanan berhasil ditambahkan!');
+    }
+
+    public function showServiceCategory(ServiceCategory $category)
+    {
+        $category->load('serviceItems');
+        
+        $statistics = [
+            'totalServiceItems' => $category->serviceItems->count(),
+            'activeServiceItems' => $category->serviceItems->where('is_active', true)->count(),
+            'totalRevenue' => $category->serviceItems->sum(function($item) {
+                return $item->examinations->where('payment_status', 'paid')->sum('final_price');
+            }),
+        ];
+        // dd($statistics);
+
+        return view('staff.service.categories.show', compact('category', 'statistics'));
+    }
+
+    public function editServiceCategory(ServiceCategory $category)
+    {
+        return view('staff.service.categories.edit', compact('category'));
+    }
+
+    public function updateServiceCategory(Request $request, ServiceCategory $category)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255|unique:service_categories,name,' . $category->id,
+            'code' => 'nullable|string|max:10|unique:service_categories,code,' . $category->id,
+            'description' => 'nullable|string|max:1000',
+            'sort_order' => 'integer|min:0',
+            'is_active' => 'boolean',
+        ]);
+
+        $validated['is_active'] = $request->boolean('is_active');
+
+        $category->update($validated);
+
+        return redirect()->route('staff.service.categories.index')
+            ->with('success', 'Kategori layanan berhasil diperbarui!');
+    }
+
+    public function destroyServiceCategory(ServiceCategory $category)
+    {
+        // Check if category has service items
+        if ($category->serviceItems()->count() > 0) {
+            return redirect()->back()
+                ->with('error', 'Kategori tidak dapat dihapus karena masih memiliki layanan terkait.');
+        }
+
+        $category->delete();
+
+        return redirect()->route('staff.service.categories.index')
+            ->with('success', 'Kategori layanan berhasil dihapus!');
+    }
+
+    // ===== SERVICE ITEM MANAGEMENT (UPDATED) =====
+
+    public function indexServiceItems(Request $request)
+    {
+        $query = ServiceItem::with('category');
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', '%' . $search . '%')
+                    ->orWhere('code', 'like', '%' . $search . '%')
+                    ->orWhere('description', 'like', '%' . $search . '%')
+                    ->orWhereHas('category', function($categoryQuery) use ($search) {
+                        $categoryQuery->where('name', 'like', '%' . $search . '%');
+                    });
+            });
+        }
+
+        if ($request->filled('category')) {
+            $query->where('category_id', $request->category);
+        }
+
+        if ($request->filled('status')) {
+            $status = $request->status === 'active' ? true : false;
+            $query->where('is_active', $status);
+        }
+
+        $sortBy = $request->get('sort_by', 'sort_order');
+        $sortOrder = $request->get('sort_order', 'asc');
+        $allowedSorts = ['name', 'code', 'price', 'sort_order', 'is_active', 'created_at'];
+
+        if (!in_array($sortBy, $allowedSorts)) {
+            $sortBy = 'sort_order';
         }
 
         if (!in_array($sortOrder, ['asc', 'desc'])) {
@@ -182,6 +312,8 @@ class AdminController extends Controller
         $query->orderBy($sortBy, $sortOrder);
         $serviceItems = $query->paginate($request->get('per_page', 10));
 
+        $categories = ServiceCategory::where('is_active', true)->get();
+
         $statistics = [
             'totalServiceItems' => ServiceItem::count(),
             'activeServiceItems' => ServiceItem::where('is_active', true)->count(),
@@ -189,25 +321,38 @@ class AdminController extends Controller
             'averagePrice' => ServiceItem::where('is_active', true)->avg('price') ?? 0,
         ];
 
-        return view('staff.service.index', array_merge(compact('serviceItems'), $statistics));
+        return view('staff.service.index', array_merge(
+            compact('serviceItems', 'categories'), 
+            $statistics
+        ));
     }
 
     public function createServiceItem()
     {
-        return view('staff.service.create');
+        $categories = ServiceCategory::where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+
+        return view('staff.service.create', compact('categories'));
     }
 
     public function storeServiceItem(Request $request)
     {
         $validated = $request->validate([
+            'category_id' => 'required|exists:service_categories,id',
             'name' => 'required|string|max:255',
+            'code' => 'nullable|string|max:20',
             'description' => 'nullable|string|max:1000',
             'price' => 'required|numeric|min:0',
+            'unit' => 'nullable|string|max:50',
+            'normal_range' => 'nullable|string|max:255',
+            'sort_order' => 'integer|min:0',
             'is_active' => 'boolean',
         ]);
 
-        // Set default value for is_active if not provided
         $validated['is_active'] = $request->boolean('is_active', true);
+        $validated['sort_order'] = $validated['sort_order'] ?? 0;
 
         ServiceItem::create($validated);
 
@@ -217,7 +362,7 @@ class AdminController extends Controller
 
     public function showServiceItem(ServiceItem $serviceItem)
     {
-        $serviceItem->load('examinations.patient');
+        $serviceItem->load(['category', 'examinations.patient']);
         
         $statistics = [
             'totalExaminations' => $serviceItem->examinations->count(),
@@ -231,15 +376,25 @@ class AdminController extends Controller
 
     public function editServiceItem(ServiceItem $serviceItem)
     {
-        return view('staff.service.edit', compact('serviceItem'));
+        $categories = ServiceCategory::where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+
+        return view('staff.service.edit', compact('serviceItem', 'categories'));
     }
 
     public function updateServiceItem(Request $request, ServiceItem $serviceItem)
     {
         $validated = $request->validate([
+            'category_id' => 'required|exists:service_categories,id',
             'name' => 'required|string|max:255',
+            'code' => 'nullable|string|max:20',
             'description' => 'nullable|string|max:1000',
             'price' => 'required|numeric|min:0',
+            'unit' => 'nullable|string|max:50',
+            'normal_range' => 'nullable|string|max:255',
+            'sort_order' => 'integer|min:0',
             'is_active' => 'boolean',
         ]);
 
@@ -279,7 +434,7 @@ class AdminController extends Controller
 
     public function indexExaminations(Request $request)
     {
-        $query = Examination::with(['patient', 'serviceItem']);
+        $query = Examination::with(['patient', 'serviceItem.category']);
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -358,7 +513,7 @@ class AdminController extends Controller
 
     public function showExaminationDetail(Examination $examination)
     {
-        $examination->load(['patient', 'serviceItem']);
+        $examination->load(['patient', 'serviceItem.category']);
         return view('staff.examinations.show', compact('examination'));
     }
 
@@ -370,27 +525,23 @@ class AdminController extends Controller
     public function uploadResult(Request $request, Examination $examination)
     {
         $request->validate([
-            'result_file' => 'required|file|mimes:pdf|max:10240', // tambahkan 'file' rule
+            'result_file' => 'required|file|mimes:pdf|max:10240',
         ]);
 
         try {
-            // Hapus media yang sudah ada di collection 'results'
             $examination->clearMediaCollection('results');
 
-            // Upload file baru
             $mediaItem = $examination
                 ->addMediaFromRequest('result_file')
                 ->usingFileName(uniqid() . '_result.' . $request->file('result_file')->getClientOriginalExtension())
-                ->usingName('Hasil Pemeriksaan') // tambahkan nama yang lebih deskriptif
+                ->usingName('Hasil Pemeriksaan')
                 ->toMediaCollection('results');
 
-            // Update status examination
             $examination->update([
                 'result_available' => true,
                 'status' => 'completed',
             ]);
 
-            // Log aktivitas (opsional)
             Log::info('Result uploaded successfully', [
                 'examination_id' => $examination->id,
                 'media_id' => $mediaItem->id,
@@ -427,7 +578,6 @@ class AdminController extends Controller
     public function markResultAvailable(Examination $examination)
     {
         try {
-            // Validasi apakah ada file hasil yang sudah diupload
             if (!$examination->hasMedia('results')) {
                 return redirect()->back()
                     ->with('error', 'Tidak dapat menandai hasil tersedia karena belum ada file yang diunggah.');
