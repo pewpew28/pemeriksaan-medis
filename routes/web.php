@@ -99,7 +99,16 @@ Route::middleware(['auth'])->prefix('staff')->name('staff.')->group(function () 
         Route::get('/examinations', [AdminController::class, 'indexExaminations'])->name('examinations.index');
         Route::get('/examinations/{examination}', [AdminController::class, 'showExaminationDetail'])->name('examinations.show');
 
-        // Di web.php atau routes untuk staff
+        // Service Categories Routes
+        Route::get('service-categories', [AdminController::class, 'indexServiceCategories'])->name('service.categories.index');
+        Route::get('service-categories/create', [AdminController::class, 'createServiceCategory'])->name('service.categories.create');
+        Route::post('service-categories', [AdminController::class, 'storeServiceCategory'])->name('service.categories.store');
+        Route::get('service-categories/{category}', [AdminController::class, 'showServiceCategory'])->name('service.categories.show');
+        Route::get('service-categories/{category}/edit', [AdminController::class, 'editServiceCategory'])->name('service.categories.edit');
+        Route::put('service-categories/{category}', [AdminController::class, 'updateServiceCategory'])->name('service.categories.update');
+        Route::delete('service-categories/{category}', [AdminController::class, 'destroyServiceCategory'])->name('service.categories.destroy');
+
+        // Service Items Routes (existing)
         Route::get('service-items', [AdminController::class, 'indexServiceItems'])->name('service.index');
         Route::get('service-items/create', [AdminController::class, 'createServiceItem'])->name('service.create');
         Route::post('service-items', [AdminController::class, 'storeServiceItem'])->name('service.store');

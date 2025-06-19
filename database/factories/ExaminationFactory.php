@@ -25,28 +25,14 @@ class ExaminationFactory extends Factory
     public function definition(): array
     {
         // Pastikan Patient dan ServiceItem selalu tersedia.
-        // Jika tidak ada di DB, buat yang baru.
         $patient = Patient::inRandomOrder()->first();
         if (!$patient) {
-            // Asumsi UserFactory akan membuat User dan PatientFactory akan membuat Patient
-            // atau Anda memiliki seeder yang memastikan patient dibuat
-            $patient = Patient::factory()->create();
+            throw new \Exception('No Patient found. Please run PatientSeeder or create patients first.');
         }
 
         $serviceItem = ServiceItem::inRandomOrder()->first();
         if (!$serviceItem) {
-            // Karena kita tidak menggunakan ServiceItemFactory,
-            // ini akan mengandalkan ServiceItemsSeeder untuk menyediakan data.
-            // Jika seeder belum dijalankan, ini akan gagal.
-            // Opsional: tambahkan logika untuk menampilkan error atau membuat default jika benar-benar tidak ada
-            // throw new \Exception('No ServiceItem found. Please run ServiceItemsSeeder.');
-            // Untuk demo, kita bisa buat dummy jika tidak ada, tapi sebaiknya service item selalu di-seed.
-            $serviceItem = ServiceItem::create([
-                'name' => 'Default Examination',
-                'description' => 'A default service item created by factory fallback.',
-                'price' => 100000.00,
-                'is_active' => true,
-            ]);
+            throw new \Exception('No ServiceItem found. Please run ServiceDataSeeder first.');
         }
 
         // Tentukan tanggal jadwal di masa depan (misal: 1-60 hari dari sekarang)

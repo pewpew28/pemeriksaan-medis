@@ -35,7 +35,7 @@
     <div class="flex items-center justify-center h-20 border-b border-blue-500 bg-blue-700">
         <div class="flex items-center space-x-3">
             <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center">
-                <img src="{{ asset('assets/icon/healthcare-icon.png') }}" alt="">
+                <i class="fas fa-heartbeat text-blue-600 text-2xl"></i>
             </div>
             <div>
                 <h1 class="text-white font-bold text-xl">HealthCare+</h1>
@@ -85,22 +85,44 @@
                 Kelola Pasien
             </x-sidebar-link>
 
-            <x-sidebar-link :href="route('staff.service.index')" :active="request()->routeIs('staff.examinations*')" icon="fas fa-file-medical">
-                Kelola Service
-            </x-sidebar-link>
+            <div x-data="{ open: false }" class="relative">
+                <button type="button" @click="open = !open"
+                    class="flex items-center w-full px-4 py-2 text-blue-200 hover:text-white hover:bg-blue-600 rounded-lg transition-all duration-200 focus:outline-none {{ request()->routeIs('staff.service*') ? 'bg-blue-700 text-white shadow-inner' : '' }}">
+                    <i class="fas fa-cogs w-5 text-center"></i>
+                    <span class="ml-4 text-sm flex-1 text-left">Service</span>
+                    <svg class="w-4 h-4 ml-2 transform transition-transform duration-200" :class="{ 'rotate-90': open }"
+                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                </button>
 
-            <x-sidebar-link :href="route('staff.examinations.index')" :active="request()->routeIs('staff.examinations*')" icon="fas fa-file-medical">
+                <div x-show="open" x-cloak x-transition:enter="transition ease-out duration-100"
+                    x-transition:enter-start="transform opacity-0 scale-95"
+                    x-transition:enter-end="transform opacity-100 scale-100"
+                    x-transition:leave="transition ease-in duration-75"
+                    x-transition:leave-start="transform opacity-100 scale-100"
+                    x-transition:leave-end="transform opacity-0 scale-95" class="mt-2 space-y-1 pl-8">
+                    <x-sidebar-link :href="route('staff.service.categories.index')" :active="request()->routeIs('staff.service.categories.index')" icon="fas fa-tags">
+                        Category
+                    </x-sidebar-link>
+                    <x-sidebar-link :href="route('staff.service.index')" :active="request()->routeIs('staff.service.index')" icon="fas fa-list-ul">
+                        Item
+                    </x-sidebar-link>
+                </div>
+            </div>
+
+            <x-sidebar-link :href="route('staff.examinations.index')" :active="request()->routeIs('staff.examinations*')" icon="fas fa-stethoscope">
                 Kelola Pemeriksaan
             </x-sidebar-link>
 
-            <x-sidebar-link :href="route('staff.users.index')" :active="request()->routeIs('staff.users*')" icon="fas fa-users">
+            <x-sidebar-link :href="route('staff.users.index')" :active="request()->routeIs('staff.users*')" icon="fas fa-users-cog">
                 Kelola User
             </x-sidebar-link>
 
             <div x-data="{ open: false }" class="relative">
                 <button type="button" @click="open = !open"
                     class="flex items-center w-full px-4 py-2 text-blue-200 hover:text-white hover:bg-blue-600 rounded-lg transition-all duration-200 focus:outline-none {{ request()->routeIs('staff.export*') ? 'bg-blue-700 text-white shadow-inner' : '' }}">
-                    <i class="fas fa-download w-5"></i>
+                    <i class="fas fa-download w-5 text-center"></i>
                     <span class="ml-4 text-sm flex-1 text-left">Export Data</span>
                     <svg class="w-4 h-4 ml-2 transform transition-transform duration-200" :class="{ 'rotate-90': open }"
                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -114,13 +136,10 @@
                     x-transition:leave="transition ease-in duration-75"
                     x-transition:leave-start="transform opacity-100 scale-100"
                     x-transition:leave-end="transform opacity-0 scale-95" class="mt-2 space-y-1 pl-8">
-                    {{-- Added pl-8 for indentation --}}
                     <x-sidebar-link :href="route('staff.export.patients')" :active="request()->routeIs('staff.export.patients')" icon="fas fa-file-excel">
-                        {{-- Changed icon for clarity --}}
                         Data Pasien
                     </x-sidebar-link>
-                    <x-sidebar-link :href="route('staff.export.examinations')" {{-- Assuming a new route for examination export --}} :active="request()->routeIs('staff.export.examinations')" icon="fas fa-file-csv">
-                        {{-- Changed icon for clarity --}}
+                    <x-sidebar-link :href="route('staff.export.examinations')" :active="request()->routeIs('staff.export.examinations')" icon="fas fa-file-csv">
                         Data Pemeriksaan
                     </x-sidebar-link>
                 </div>
@@ -135,24 +154,25 @@
                 Dashboard
             </x-sidebar-link>
 
-            <x-sidebar-link :href="route('staff.dashboard')" :active="request()->routeIs('staff.dashboard')" icon="fas fa-hospital-user">
+            <x-sidebar-link :href="route('staff.dashboard')" :active="request()->routeIs('staff.dashboard')" icon="fas fa-user-nurse">
                 Staff Dashboard
             </x-sidebar-link>
 
-            <x-sidebar-link :href="route('staff.examinations.index')" :active="request()->routeIs('staff.examinations*')" icon="fas fa-file-medical">
+            <x-sidebar-link :href="route('staff.examinations.index')" :active="request()->routeIs('staff.examinations*')" icon="fas fa-stethoscope">
                 Kelola Pemeriksaan
             </x-sidebar-link>
         @elseif($user->role === 'cs')
             <!-- CS Menu -->
             <div class="mb-4">
-                <h2 class="text-blue-200 text-xs font-semibold uppercase tracking-wider px-3">Menu Customer Service</h2>
+                <h2 class="text-blue-200 text-xs font-semibold uppercase tracking-wider px-3">Menu Customer Service
+                </h2>
             </div>
 
             <x-sidebar-link :href="route('dashboard')" :active="request()->routeIs('dashboard')" icon="fas fa-home">
                 Dashboard
             </x-sidebar-link>
 
-            <x-sidebar-link :href="route('staff.dashboard')" :active="request()->routeIs('staff.dashboard')" icon="fas fa-hospital-user">
+            <x-sidebar-link :href="route('staff.dashboard')" :active="request()->routeIs('staff.dashboard')" icon="fas fa-headset">
                 Staff Dashboard
             </x-sidebar-link>
 
@@ -160,7 +180,7 @@
                 Kelola Pasien
             </x-sidebar-link>
 
-            <x-sidebar-link :href="route('staff.examinations.index')" :active="request()->routeIs('staff.examinations*')" icon="fas fa-file-medical">
+            <x-sidebar-link :href="route('staff.examinations.index')" :active="request()->routeIs('staff.examinations*')" icon="fas fa-clipboard-list">
                 Kelola Pemeriksaan
             </x-sidebar-link>
         @elseif($user->role === 'pasien')
@@ -177,11 +197,11 @@
                 Dashboard Pasien
             </x-sidebar-link>
 
-            <x-sidebar-link :href="route('pasien.profile')" :active="request()->routeIs('pasien.profile*')" icon="fas fa-user">
+            <x-sidebar-link :href="route('pasien.profile')" :active="request()->routeIs('pasien.profile*')" icon="fas fa-id-card">
                 Profil Saya
             </x-sidebar-link>
 
-            <x-sidebar-link :href="route('pasien.examination.register.form')" :active="request()->routeIs('pasien.examination.register*')" icon="fas fa-plus-circle">
+            <x-sidebar-link :href="route('pasien.examination.register.form')" :active="request()->routeIs('pasien.examination.register*')" icon="fas fa-calendar-plus">
                 Daftar Pemeriksaan
             </x-sidebar-link>
 
@@ -197,7 +217,7 @@
         <div class="space-y-2">
             <a href="{{ route('profile.edit') }}"
                 class="flex items-center px-4 py-2 text-blue-200 hover:text-white hover:bg-blue-600 rounded-lg transition-all duration-200">
-                <i class="fas fa-user w-5"></i>
+                <i class="fas fa-user-edit w-5 text-center"></i>
                 <span class="ml-4 text-sm">Profil Saya</span>
             </a>
 
@@ -205,7 +225,7 @@
                 @csrf
                 <button type="button" onclick="confirmLogout()"
                     class="w-full flex items-center px-4 py-2 text-red-200 hover:text-white hover:bg-red-600 rounded-lg transition-all duration-200">
-                    <i class="fas fa-sign-out-alt w-5"></i>
+                    <i class="fas fa-sign-out-alt w-5 text-center"></i>
                     <span class="ml-4 text-sm">Keluar</span>
                 </button>
             </form>
@@ -214,81 +234,84 @@
 </aside>
 
 @push('scripts')
-<script>
-function confirmLogout() {
-    Swal.fire({
-        title: 'Konfirmasi Keluar',
-        text: 'Apakah Anda yakin ingin keluar dari sistem?',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#dc2626',
-        cancelButtonColor: '#6b7280',
-        confirmButtonText: 'Ya, Keluar',
-        cancelButtonText: 'Batal',
-        reverseButtons: true,
-        customClass: {
-            popup: 'swal-custom-popup',
-            title: 'swal-custom-title',
-            content: 'swal-custom-content'
-        }
-    }).then((result) => {
-        if (result.isConfirmed) {
-            // Tampilkan loading
+    <script>
+        function confirmLogout() {
             Swal.fire({
-                title: 'Sedang Logout...',
-                text: 'Mohon tunggu sebentar',
-                allowOutsideClick: false,
-                allowEscapeKey: false,
-                showConfirmButton: false,
-                didOpen: () => {
-                    Swal.showLoading()
+                title: 'Konfirmasi Keluar',
+                text: 'Apakah Anda yakin ingin keluar dari sistem?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc2626',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: 'Ya, Keluar',
+                cancelButtonText: 'Batal',
+                reverseButtons: true,
+                customClass: {
+                    popup: 'swal-custom-popup',
+                    title: 'swal-custom-title',
+                    content: 'swal-custom-content'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Tampilkan loading
+                    Swal.fire({
+                        title: 'Sedang Logout...',
+                        text: 'Mohon tunggu sebentar',
+                        allowOutsideClick: false,
+                        allowEscapeKey: false,
+                        showConfirmButton: false,
+                        didOpen: () => {
+                            Swal.showLoading()
+                        }
+                    });
+
+                    // Submit form logout
+                    document.getElementById('logout-form').submit();
                 }
             });
-            
-            // Submit form logout
-            document.getElementById('logout-form').submit();
         }
-    });
-}
-</script>
+    </script>
 
-<style>
-.swal-custom-popup {
-    border-radius: 15px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
-}
+    <style>
+        .swal-custom-popup {
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+        }
 
-.swal-custom-title {
-    font-size: 1.5rem;
-    font-weight: 600;
-    color: #1f2937;
-}
+        .swal-custom-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #1f2937;
+        }
 
-.swal-custom-content {
-    font-size: 1rem;
-    color: #4b5563;
-}
+        .swal-custom-content {
+            font-size: 1rem;
+            color: #4b5563;
+        }
 
-/* Custom animation for SweetAlert2 */
-.swal2-show {
-    animation: swal2-show 0.3s ease-out;
-}
+        /* Custom animation for SweetAlert2 */
+        .swal2-show {
+            animation: swal2-show 0.3s ease-out;
+        }
 
-@keyframes swal2-show {
-    0% {
-        transform: scale(0.7);
-        opacity: 0;
-    }
-    45% {
-        transform: scale(1.05);
-        opacity: 1;
-    }
-    80% {
-        transform: scale(0.95);
-    }
-    100% {
-        transform: scale(1);
-    }
-}
-</style>
+        @keyframes swal2-show {
+            0% {
+                transform: scale(0.7);
+                opacity: 0;
+            }
+
+            45% {
+                transform: scale(1.05);
+                opacity: 1;
+            }
+
+            80% {
+                transform: scale(0.95);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+    </style>
 @endpush

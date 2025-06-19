@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Examination;
 use App\Models\Patient;
+use App\Models\ServiceCategory;
 use App\Models\ServiceItem;
 use Carbon\Carbon;
 use Illuminate\View\View;
@@ -171,11 +172,11 @@ class PatientController extends Controller
         $user = Auth::user();
         // Ambil data pasien yang terkait dengan user
         $patient = $user->patient;
-        $serviceItems = ServiceItem::where('is_active', true)->get();
+        $serviceCategories = ServiceCategory::where('is_active', true)->get();
 
         // Jika pasien belum memiliki data detail, mungkin perlu form pengisian data pasien dulu
         // atau pastikan data pasien terisi saat registrasi user.
-        return view('patient.examination.register', compact('user', 'patient', 'serviceItems'));
+        return view('patient.examination.register', compact('user', 'patient', 'serviceCategories'));
     }
 
     /**
