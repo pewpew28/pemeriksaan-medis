@@ -172,8 +172,9 @@ class PatientController extends Controller
         $user = Auth::user();
         // Ambil data pasien yang terkait dengan user
         $patient = $user->patient;
-        $serviceCategories = ServiceCategory::where('is_active', true)->get();
+        $serviceCategories = ServiceCategory::with('serviceItems')->where('is_active', true)->get();
 
+        // return $serviceCategories;
         // Jika pasien belum memiliki data detail, mungkin perlu form pengisian data pasien dulu
         // atau pastikan data pasien terisi saat registrasi user.
         return view('patient.examination.register', compact('user', 'patient', 'serviceCategories'));
@@ -184,6 +185,7 @@ class PatientController extends Controller
      */
     public function storeRegistration(Request $request)
     {
+        // dd($request->all());
         $user = Auth::user();
         $patient = $user->patient;
 
