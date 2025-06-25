@@ -136,7 +136,6 @@ class PaymentController extends Controller
 
             // Redirect the user to the Xendit Invoice URL
             return redirect()->away($createInvoice['invoice_url']);
-
         } catch (ApiException $e) {
             // Handle Xendit API specific exceptions
             Log::error("Xendit Invoice API Error: " . $e->getMessage(), [
@@ -386,13 +385,216 @@ class PaymentController extends Controller
             ]);
 
             return redirect()->route('pasien.examinations.index', ['examination' => $examinationId])->with('success', 'Pilihan pembayaran tunai telah dicatat. Silakan bayar di kasir klinik.');
-
         } catch (\Exception $e) {
             Log::error("Error confirming cash payment: " . $e->getMessage(), [
                 'examination_id' => $examinationId,
                 'trace' => $e->getTraceAsString()
             ]);
             return redirect()->back()->with('error', 'Terjadi kesalahan saat mengkonfirmasi pembayaran tunai.');
+        }
+    }
+
+    public function processCashPayment($examination, Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'amount_received' => 'required|numeric|min:0',
+            'notes' => 'nullable|string|max:500',
+        ]);
+
+        if ($validator->fails()) {
+            Log::warning('Validation failed for cash payment processing', [
+                'errors' => $validator->errors()->all(),
+                'examination_id' => $examination
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Data tidak valid.',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            $examination = Examination::with(['patient', 'serviceItem'])->find($examination);
+
+            if (!$examination) {
+                Log::warning('Attempted to process cash payment for non-existent examination', [
+                    'examination_id' => $examination
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Pemeriksaan tidak ditemukan.'
+                ], 404);
+            }
+
+            // Validate examination status - only allow cash payment for pending_cash_payment or created status
+            if (!in_array($examination->status, ['pending_cash_payment', 'created'])) {
+                Log::warning('Attempted to process cash payment for examination with invalid status', [
+                    'examination_id' => $examination,
+                    'current_status' => $examination->status
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Pembayaran tunai tidak dapat diproses untuk status pemeriksaan: ' . $examination->status
+                ], 400);
+            }
+
+            // Validate amount received
+            $expectedAmount = (float) $examination->serviceItem->price;
+            $amountReceived = (float) $request->amount_received;
+
+            if ($amountReceived < $expectedAmount) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Jumlah pembayaran kurang dari yang seharusnya. Expected: Rp ' . number_format($expectedAmount, 0, ',', '.') . ', Received: Rp ' . number_format($amountReceived, 0, ',', '.')
+                ], 400);
+            }
+
+            // Check if there's already a completed payment for this examination
+            $existingPayment = Payment::where('examination_id', $examination->id)
+                ->where('status', 'PAID')
+                ->first();
+
+            if ($existingPayment) {
+                Log::warning('Attempted to process cash payment for already paid examination', [
+                    'examination_id' => $examination,
+                    'existing_payment_id' => $existingPayment->id
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Pemeriksaan ini sudah terbayar sebelumnya.'
+                ], 400);
+            }
+
+            // Create or update payment record
+            $payment = Payment::updateOrCreate(
+                [
+                    'examination_id' => $examination->id,
+                    'method' => 'cash'
+                ],
+                [
+                    'status' => 'PAID',
+                    'amount' => $expectedAmount,
+                    'amount_received' => $amountReceived,
+                    'currency' => 'IDR',
+                    'reference_code' => 'CASH-' . $examination->id . '-' . Carbon::now()->format('YmdHis'),
+                    'paid_at' => Carbon::now(),
+                    'processed_by' => auth()->id(), // Store who processed the payment
+                    'notes' => $request->notes,
+                    'checkout_link' => null,
+                    'xendit_id' => null,
+                    'expiry_time' => null,
+                ]
+            );
+
+            // Calculate change if any
+            $change = $amountReceived - $expectedAmount;
+
+            // Update examination status
+            $examination->update([
+                'payment_method' => 'cash',
+                'payment_status' => 'paid',
+                'status' => 'scheduled', // Move to scheduled after payment
+                'final_price' => $expectedAmount, // Ensure final price is set
+                'paid_at' => Carbon::now()
+            ]);
+
+            Log::info('Cash payment processed successfully', [
+                'examination_id' => $examination,
+                'payment_id' => $payment->id,
+                'amount_expected' => $expectedAmount,
+                'amount_received' => $amountReceived,
+                'change' => $change,
+                'processed_by' => auth()->id(),
+                'examination_new_status' => $examination->status
+            ]);
+
+            // Return success response with payment details
+            // return response()->json([
+            //     'success' => true,
+            //     'message' => 'Pembayaran tunai berhasil diproses.',
+            //     'data' => [
+            //         'examination_id' => $examination->id,
+            //         'patient_name' => $examination->patient->name,
+            //         'service_name' => $examination->serviceItem->name,
+            //         'amount_expected' => $expectedAmount,
+            //         'amount_received' => $amountReceived,
+            //         'change' => $change,
+            //         'payment_id' => $payment->id,
+            //         'reference_code' => $payment->reference_code,
+            //         'paid_at' => $payment->paid_at->format('d/m/Y H:i:s'),
+            //         'examination_status' => $examination->status
+            //     ]
+            // ]);
+            return redirect()->route('staff.payments.receipt', ['examination' => $examination->id]);
+        } catch (\Exception $e) {
+            Log::error("Error processing cash payment: " . $e->getMessage(), [
+                'examination_id' => $examination,
+                'trace' => $e->getTraceAsString(),
+                'request_data' => $request->all()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat memproses pembayaran tunai.'
+            ], 500);
+        }
+    }
+
+    public function getCashPaymentReceipt($examinationId)
+    {
+        try {
+            $examination = Examination::with(['patient', 'serviceItem'])->find($examinationId);
+
+            if (!$examination) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Pemeriksaan tidak ditemukan.'
+                ], 404);
+            }
+
+            $payment = Payment::where('examination_id', $examination->id)
+                ->where('method', 'cash')
+                ->where('status', 'PAID')
+                ->first();
+
+            if (!$payment) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Data pembayaran tidak ditemukan.'
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'examination_id' => $examination->id,
+                    'patient_name' => $examination->patient->name,
+                    'patient_phone' => $examination->patient->phone_number,
+                    'service_name' => $examination->serviceItem->name,
+                    'service_category' => $examination->serviceItem->category->name ?? '',
+                    'amount' => $payment->amount,
+                    'amount_received' => $payment->amount_received,
+                    'change' => $payment->amount_received - $payment->amount,
+                    'reference_code' => $payment->reference_code,
+                    'paid_at' => $payment->paid_at->format('d/m/Y H:i:s'),
+                    'processed_by_name' => $payment->processedBy->name ?? 'System', // Assuming User relationship
+                    'notes' => $payment->notes
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error("Error getting cash payment receipt: " . $e->getMessage(), [
+                'examination_id' => $examinationId,
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat mengambil data receipt.'
+            ], 500);
         }
     }
 }

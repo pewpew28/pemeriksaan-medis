@@ -220,11 +220,11 @@ class AdminController extends Controller
     public function showServiceCategory(ServiceCategory $category)
     {
         $category->load('serviceItems');
-        
+
         $statistics = [
             'totalServiceItems' => $category->serviceItems->count(),
             'activeServiceItems' => $category->serviceItems->where('is_active', true)->count(),
-            'totalRevenue' => $category->serviceItems->sum(function($item) {
+            'totalRevenue' => $category->serviceItems->sum(function ($item) {
                 return $item->examinations->where('payment_status', 'paid')->sum('final_price');
             }),
         ];
@@ -282,7 +282,7 @@ class AdminController extends Controller
                 $q->where('name', 'like', '%' . $search . '%')
                     ->orWhere('code', 'like', '%' . $search . '%')
                     ->orWhere('description', 'like', '%' . $search . '%')
-                    ->orWhereHas('category', function($categoryQuery) use ($search) {
+                    ->orWhereHas('category', function ($categoryQuery) use ($search) {
                         $categoryQuery->where('name', 'like', '%' . $search . '%');
                     });
             });
@@ -322,7 +322,7 @@ class AdminController extends Controller
         ];
 
         return view('staff.service.index', array_merge(
-            compact('serviceItems', 'categories'), 
+            compact('serviceItems', 'categories'),
             $statistics
         ));
     }
@@ -363,7 +363,7 @@ class AdminController extends Controller
     public function showServiceItem(ServiceItem $serviceItem)
     {
         $serviceItem->load(['category', 'examinations.patient']);
-        
+
         $statistics = [
             'totalExaminations' => $serviceItem->examinations->count(),
             'completedExaminations' => $serviceItem->examinations->where('status', 'completed')->count(),
@@ -425,7 +425,7 @@ class AdminController extends Controller
         $serviceItem->update(['is_active' => !$serviceItem->is_active]);
 
         $status = $serviceItem->is_active ? 'diaktifkan' : 'dinonaktifkan';
-        
+
         return redirect()->back()
             ->with('success', "Layanan berhasil {$status}!");
     }
@@ -478,7 +478,18 @@ class AdminController extends Controller
         }
 
         $query->orderBy($sortBy, $sortOrder);
+
+        if (Auth::user()->role === "perawat") {
+            $query->whereDate('scheduled_date', now()->toDateString());
+            $query->whereIn('status', ['scheduled', 'in_progress', 'completed']);
+        }
+
+        if (Auth::user()->role === "cs") {
+            $query->whereIn('status', ['created', 'pending_cash_payment', 'scheduled']);
+        }
+
         $examinations = $query->paginate($request->get('per_page', 10));
+        // dd($examinations); // Comment out dd() for production
 
         $statistics = [
             'totalExaminations' => Examination::count(),
@@ -509,6 +520,115 @@ class AdminController extends Controller
             compact('examinations', 'statusOptions', 'paymentStatusOptions'),
             $statistics
         ));
+    }
+
+    public function showPaymentCashForm($examinationId)
+    {
+
+        $examination = Examination::find($examinationId);
+        return view('staff.examinations.payment', compact('examination'));
+    }
+
+    public function updateStatus($examinationId, Request $request)
+    {
+        try {
+            // Validasi input
+            $request->validate([
+                'status' => 'required|string|in:scheduled,in_progress,completed,cancelled',
+                'notes' => 'nullable|string|max:500'
+            ]);
+
+            // Cari examination berdasarkan ID
+            $examination = Examination::find($examinationId);
+
+            if (!$examination) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Data pemeriksaan tidak ditemukan!'
+                ], 404);
+            }
+
+            // Validasi status transition (opsional - sesuaikan dengan business logic)
+            $validTransitions = $this->getValidStatusTransitions($examination->status);
+
+            if (!in_array($request->status, $validTransitions)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Status tidak dapat diubah dari ' . $examination->status . ' ke ' . $request->status
+                ], 400);
+            }
+
+            // Simpan status lama untuk log
+            $oldStatus = $examination->status;
+
+            // Update examination
+            $examination->update([
+                'status' => $request->status,
+                'notes' => $request->notes ?? $examination->notes,
+                'updated_at' => now()
+            ]);
+
+            // Log activity (opsional)
+            Log::info('Examination status updated', [
+                'examination_id' => $examinationId,
+                'old_status' => $oldStatus,
+                'new_status' => $request->status,
+                'updated_by' => auth()->user()->id,
+                'notes' => $request->notes
+            ]);
+
+            // Optional: Trigger notifications atau events
+            // event(new ExaminationStatusUpdated($examination, $oldStatus));
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Status pemeriksaan berhasil diupdate!',
+                'data' => [
+                    'examination_id' => $examination->id,
+                    'old_status' => $oldStatus,
+                    'new_status' => $examination->status,
+                    'patient_name' => $examination->patient->name ?? 'Unknown'
+                ]
+            ], 200);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Data tidak valid!',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            // Log error
+            Log::error('Error updating examination status', [
+                'examination_id' => $examinationId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat mengupdate status pemeriksaan!'
+            ], 500);
+        }
+    }
+
+    /**
+     * Get valid status transitions based on current status
+     */
+    private function getValidStatusTransitions($currentStatus)
+    {
+        $transitions = [
+            'created' => ['pending_payment', 'pending_cash_payment', 'cancelled'],
+            'pending_payment' => ['paid', 'expired_payment', 'cancelled'],
+            'pending_cash_payment' => ['paid', 'cancelled'],
+            'paid' => ['scheduled', 'cancelled'],
+            'scheduled' => ['in_progress', 'cancelled'],
+            'in_progress' => ['completed', 'cancelled'],
+            'completed' => [], // Final status
+            'cancelled' => [], // Final status
+            'expired_payment' => ['pending_payment', 'cancelled']
+        ];
+
+        return $transitions[$currentStatus] ?? [];
     }
 
     public function showExaminationDetail(Examination $examination)
