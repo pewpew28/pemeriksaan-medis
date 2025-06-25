@@ -86,7 +86,7 @@ Route::middleware(['auth'])->prefix('staff')->name('staff.')->group(function () 
 
     // Manajemen Data Pasien
     // Hanya bisa diakses oleh Admin atau CS (Customer Service)
-    Route::middleware('role:admin|cs')->group(function () {
+    Route::middleware('role:admin|cs|perawat')->group(function () {
         Route::get('/patients', [AdminController::class, 'indexPatients'])->name('patients.index');
         Route::get('/patients/create', [AdminController::class, 'createPatient'])->name('patients.create');
         Route::post('/patients', [AdminController::class, 'storePatient'])->name('patients.store');
@@ -97,6 +97,13 @@ Route::middleware(['auth'])->prefix('staff')->name('staff.')->group(function () 
 
         // Melihat daftar pemeriksaan pasien (untuk CS juga)
         Route::get('/examinations', [AdminController::class, 'indexExaminations'])->name('examinations.index');
+        Route::get('/examinations/create', [AdminController::class, 'indexExaminations'])->name('examinations.create');
+        Route::get('/examinations/payment/{examinationId}', [AdminController::class, 'showPaymentCashForm'])->name('examinations.payment.form');
+        Route::post('/examinations/{examination}/payment/cash', [PaymentController::class, 'processCashPayment'])
+            ->name('examinations.payment.cash');
+        Route::get('/staff/payments/{examination}/receipt', [PaymentController::class, 'getCashPaymentReceipt'])
+            ->name('payments.receipt');
+        Route::patch('/examinations/{examinationId}/status', [AdminController::class, 'updateStatus'])->name('examination.status');
         Route::get('/examinations/{examination}', [AdminController::class, 'showExaminationDetail'])->name('examinations.show');
 
         // Service Categories Routes
