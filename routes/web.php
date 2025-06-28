@@ -30,6 +30,8 @@ Route::get('/dashboard', [DashboardController::class, 'index']) // Buat Dashboar
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
 
+Route::get('/receipt/{examinationId}', [PaymentController::class, 'getCashPaymentReceipt'])->name('receipt');
+
 // Rute Profil (dari Laravel Breeze)
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

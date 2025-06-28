@@ -735,24 +735,27 @@ class AdminController extends Controller
     public function indexUsers()
     {
         $users = User::with('roles')->paginate(10);
-        return view('staff.users.index', compact('users'));
+        $totalAdmin = User::where('role', 'admin')->count();
+        $totalStaff = User::whereIn('role', ['perawat','cs'])->count(); 
+        $totalPasien = User::where('role', 'pasien')->count();
+        return view('staff.user.index', compact('users', 'totalAdmin', 'totalStaff', 'totalPasien'));
     }
 
     public function editUserRole(User $user)
     {
         $roles = Role::all();
-        return view('staff.users.edit_role', compact('user', 'roles'));
+        return view('staff.user.edit_role', compact('user', 'roles'));
     }
 
     public function updateUserRole(Request $request, User $user)
     {
+        // dd($request->all());
         $validated = $request->validate([
-            'roles' => 'required|array',
-            'roles.*' => 'exists:roles,name',
+            'role' => 'required|string|exists:roles,name',
         ]);
 
-        $user->syncRoles($validated['roles']);
-        $user->update(['role' => $validated['roles'][0]]);
+        $user->syncRoles($validated['role']);
+        $user->update(['role' => $validated['role']]);
 
         return redirect()->route('staff.users.index')
             ->with('success', 'Peran pengguna berhasil diperbarui!');

@@ -462,13 +462,13 @@
                                                             <i class="fas fa-edit mr-1"></i>Bayar
                                                         </a>
                                                     @endif
-                                                    <button
+                                                    {{-- <button
                                                         class="inline-flex items-center px-3 py-1 bg-red-100 hover:bg-red-200 text-red-700 text-xs font-medium rounded-md transition-colors duration-200 delete-examination"
                                                         data-id="{{ $examination->id }}"
                                                         data-patient="{{ $examination->patient->name ?? 'Unknown' }}"
                                                         title="Hapus Data">
                                                         <i class="fas fa-trash mr-1"></i>Hapus
-                                                    </button>
+                                                    </button> --}}
                                                 @endif
 
                                             </div>

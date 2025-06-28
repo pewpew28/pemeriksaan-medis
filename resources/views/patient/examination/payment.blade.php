@@ -63,6 +63,11 @@
                                     <p class="text-green-700 mt-1" id="payment-status-message">Pemeriksaan Anda telah
                                         terbayar lunas. Terima kasih!</p>
                                 </div>
+                                <div>
+                                    <a href="{{ route('receipt', ['examinationId' => $examination->id]) }}">
+                                        <button class="px-4 py-2 rounded-lg border text-green-800 border-green-800 bg-white">Invoice</button>
+                                    </a>
+                                </div>
                             @elseif ($examination->payment_status == 'pending_cash_payment')
                                 <svg class="w-5 h-5 text-yellow-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd"

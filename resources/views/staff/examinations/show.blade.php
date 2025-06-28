@@ -21,7 +21,8 @@
                                 <i class="fas fa-eye text-indigo-600 text-lg"></i>
                             </div>
                             <div>
-                                <h3 class="text-lg font-semibold text-gray-900">Detail Pemeriksaan #{{ $examination->id }}</h3>
+                                <h3 class="text-lg font-semibold text-gray-900">Detail Pemeriksaan
+                                    #{{ $examination->id }}</h3>
                                 <p class="text-sm text-gray-500">Informasi lengkap mengenai pemeriksaan pasien</p>
                             </div>
                         </div>
@@ -63,25 +64,31 @@
                             </div>
                             <div class="py-3 flex justify-between">
                                 <dt class="text-sm font-medium text-gray-500">Email</dt>
-                                <dd class="text-sm text-gray-900">{{ $examination->patient->email ?: 'Tidak Tersedia' }}</dd>
+                                <dd class="text-sm text-gray-900">{{ $examination->patient->email ?: 'Tidak Tersedia' }}
+                                </dd>
                             </div>
                             <div class="py-3 flex justify-between">
                                 <dt class="text-sm font-medium text-gray-500">No. Telepon</dt>
-                                <dd class="text-sm text-gray-900">{{ $examination->patient->phone_number ?: 'Tidak Tersedia' }}</dd>
+                                <dd class="text-sm text-gray-900">
+                                    {{ $examination->patient->phone_number ?: 'Tidak Tersedia' }}</dd>
                             </div>
                             <div class="py-3 grid grid-cols-2 gap-4">
                                 <div>
                                     <dt class="text-sm font-medium text-gray-500">Umur</dt>
-                                    <dd class="text-sm text-gray-900 font-medium">{{ $examination->patient->age }} tahun</dd>
+                                    <dd class="text-sm text-gray-900 font-medium">{{ $examination->patient->age }} tahun
+                                    </dd>
                                 </div>
                                 <div>
                                     <dt class="text-sm font-medium text-gray-500">Jenis Kelamin</dt>
-                                    <dd class="text-sm text-gray-900">{{ $examination->patient->gender ? ($examination->patient->gender == 'L' ? 'Laki-laki' : 'Perempuan') : 'Tidak Tersedia' }}</dd>
+                                    <dd class="text-sm text-gray-900">
+                                        {{ $examination->patient->gender ? ($examination->patient->gender == 'L' ? 'Laki-laki' : 'Perempuan') : 'Tidak Tersedia' }}
+                                    </dd>
                                 </div>
                             </div>
                             <div class="py-3 flex justify-between items-start">
                                 <dt class="text-sm font-medium text-gray-500">Alamat</dt>
-                                <dd class="text-sm text-gray-900 text-right max-w-md">{{ $examination->patient->address ?: 'Tidak Tersedia' }}</dd>
+                                <dd class="text-sm text-gray-900 text-right max-w-md">
+                                    {{ $examination->patient->address ?: 'Tidak Tersedia' }}</dd>
                             </div>
                         </dl>
                     </div>
@@ -105,7 +112,8 @@
                             </div>
                             <div class="py-3 flex justify-between">
                                 <dt class="text-sm font-medium text-gray-500">Jenis Layanan</dt>
-                                <dd class="text-sm text-gray-900 font-medium">{{ $examination->serviceItem->name ?: 'Tidak Tersedia' }}</dd>
+                                <dd class="text-sm text-gray-900 font-medium">
+                                    {{ $examination->serviceItem->name ?: 'Tidak Tersedia' }}</dd>
                             </div>
                             <div class="py-3 flex justify-between">
                                 <dt class="text-sm font-medium text-gray-500">Status Pemeriksaan</dt>
@@ -122,9 +130,11 @@
                                             'completed' => 'bg-green-100 text-green-800',
                                             'cancelled' => 'bg-red-100 text-red-800',
                                         ];
-                                        $statusClass = $statusClasses[$examination->status] ?? 'bg-gray-100 text-gray-800';
+                                        $statusClass =
+                                            $statusClasses[$examination->status] ?? 'bg-gray-100 text-gray-800';
                                     @endphp
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $statusClass }}">
+                                    <span
+                                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $statusClass }}">
                                         {{ ucfirst(str_replace('_', ' ', $examination->status)) }}
                                     </span>
                                 </dd>
@@ -137,11 +147,13 @@
                             </div>
                             <div class="py-3 flex justify-between">
                                 <dt class="text-sm font-medium text-gray-500">Dibuat Pada</dt>
-                                <dd class="text-sm text-gray-900">{{ $examination->created_at->format('d/m/Y H:i') }}</dd>
+                                <dd class="text-sm text-gray-900">{{ $examination->created_at->format('d/m/Y H:i') }}
+                                </dd>
                             </div>
                             <div class="py-3 flex justify-between">
                                 <dt class="text-sm font-medium text-gray-500">Terakhir Diperbarui</dt>
-                                <dd class="text-sm text-gray-900">{{ $examination->updated_at->format('d/m/Y H:i') }}</dd>
+                                <dd class="text-sm text-gray-900">{{ $examination->updated_at->format('d/m/Y H:i') }}
+                                </dd>
                             </div>
                         </dl>
                     </div>
@@ -164,23 +176,36 @@
                         <dl class="divide-y divide-gray-200">
                             <div class="py-3 flex justify-between">
                                 <dt class="text-sm font-medium text-gray-500">Status Pembayaran</dt>
-                                <dd>
+                                <dd class="flex items-center space-x-3">
                                     @php
                                         $paymentStatusClasses = [
                                             'pending' => 'bg-yellow-100 text-yellow-800',
                                             'paid' => 'bg-green-100 text-green-800',
                                             'failed' => 'bg-red-100 text-red-800',
                                         ];
-                                        $paymentStatusClass = $paymentStatusClasses[$examination->payment_status] ?? 'bg-gray-100 text-gray-800';
+                                        $paymentStatusClass =
+                                            $paymentStatusClasses[$examination->payment_status] ??
+                                            'bg-gray-100 text-gray-800';
                                     @endphp
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $paymentStatusClass }}">
+                                    <span
+                                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $paymentStatusClass }}">
                                         {{ ucfirst($examination->payment_status) }}
                                     </span>
+
+                                    @if ($examination->payment_status === 'paid')
+                                        <a href="{{ route('receipt', ['examinationId' => $examination->id]) }}"
+                                            target="_blank"
+                                            class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200">
+                                            <i class="fas fa-receipt mr-1.5"></i>
+                                            Lihat Receipt
+                                        </a>
+                                    @endif
                                 </dd>
                             </div>
                             <div class="py-3 flex justify-between">
                                 <dt class="text-sm font-medium text-gray-500">Metode Pembayaran</dt>
-                                <dd class="text-sm text-gray-900">{{ $examination->payment_method ?: 'Tidak Tersedia' }}</dd>
+                                <dd class="text-sm text-gray-900">
+                                    {{ $examination->payment_method ?: 'Online Payment' }}</dd>
                             </div>
                             <div class="py-3 flex justify-between">
                                 <dt class="text-sm font-medium text-gray-500">Total Pembayaran</dt>
@@ -203,15 +228,19 @@
                                     <dl class="space-y-2 text-sm ml-6">
                                         <div class="flex justify-between">
                                             <dt class="text-gray-500">Alamat Penjemputan</dt>
-                                            <dd class="text-gray-900 text-right max-w-xs">{{ $examination->pickup_address ?: 'Tidak Tersedia' }}</dd>
+                                            <dd class="text-gray-900 text-right max-w-xs">
+                                                {{ $examination->pickup_address ?: 'Tidak Tersedia' }}</dd>
                                         </div>
                                         <div class="flex justify-between">
                                             <dt class="text-gray-500">Waktu Penjemputan</dt>
-                                            <dd class="text-gray-900">{{ $examination->pickup_time ? \Carbon\Carbon::parse($examination->pickup_time)->format('d/m/Y H:i') : 'Tidak Tersedia' }}</dd>
+                                            <dd class="text-gray-900">
+                                                {{ $examination->pickup_time ? \Carbon\Carbon::parse($examination->pickup_time)->format('d/m/Y H:i') : 'Tidak Tersedia' }}
+                                            </dd>
                                         </div>
                                         @if ($examination->pickup_location_map)
                                             <div class="text-right">
-                                                <a href="{{ $examination->pickup_location_map }}" target="_blank" class="inline-flex items-center text-indigo-600 hover:text-indigo-800 text-sm font-medium">
+                                                <a href="{{ $examination->pickup_location_map }}" target="_blank"
+                                                    class="inline-flex items-center text-indigo-600 hover:text-indigo-800 text-sm font-medium">
                                                     <i class="fas fa-map-marker-alt mr-1"></i> Lihat Peta
                                                 </a>
                                             </div>
@@ -243,7 +272,8 @@
                                 <div class="py-3 flex justify-between">
                                     <dt class="text-sm font-medium text-gray-500">Status Hasil</dt>
                                     <dd>
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                        <span
+                                            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                             Tersedia
                                         </span>
                                     </dd>
@@ -263,12 +293,14 @@
                                 </div>
                                 <div class="py-3 flex justify-between">
                                     <dt class="text-sm font-medium text-gray-500">Tanggal Upload</dt>
-                                    <dd class="text-sm text-gray-900">{{ $resultFile->created_at->format('d/m/Y H:i') }}</dd>
+                                    <dd class="text-sm text-gray-900">
+                                        {{ $resultFile->created_at->format('d/m/Y H:i') }}</dd>
                                 </div>
                             </dl>
                         @else
                             <div class="text-center py-8">
-                                <div class="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                                <div
+                                    class="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
                                     <i class="fas fa-file-upload text-gray-400 text-2xl"></i>
                                 </div>
                                 <h3 class="text-sm font-medium text-gray-900 mb-2">Hasil Belum Tersedia</h3>
@@ -301,14 +333,18 @@
                             @if ($examination->description)
                                 <div class="mb-6 pb-6 border-b border-gray-200 last:mb-0 last:pb-0 last:border-b-0">
                                     <dt class="text-sm font-medium text-gray-500 mb-2">Deskripsi Pemeriksaan</dt>
-                                    <dd class="text-sm text-gray-900 bg-gray-50 rounded-lg p-4 leading-relaxed border border-gray-200">{{ $examination->description }}</dd>
+                                    <dd
+                                        class="text-sm text-gray-900 bg-gray-50 rounded-lg p-4 leading-relaxed border border-gray-200">
+                                        {{ $examination->description }}</dd>
                                 </div>
                             @endif
 
                             @if ($examination->notes)
                                 <div class="{{ $examination->description ? 'pt-6' : '' }} mb-0">
                                     <dt class="text-sm font-medium text-gray-500 mb-2">Catatan Khusus</dt>
-                                    <dd class="text-sm text-gray-900 bg-blue-50 rounded-lg p-4 border-l-4 border-blue-400 text-blue-800 leading-relaxed">{{ $examination->notes }}</dd>
+                                    <dd
+                                        class="text-sm text-gray-900 bg-blue-50 rounded-lg p-4 border-l-4 border-blue-400 text-blue-800 leading-relaxed">
+                                        {{ $examination->notes }}</dd>
                                 </div>
                             @endif
                         </div>

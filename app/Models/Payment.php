@@ -19,6 +19,7 @@ class Payment extends Model
     protected $fillable = [
         'examination_id',
         'amount',
+        'amount_received',
         'currency',
         'description',
         'method',
@@ -64,6 +65,7 @@ class Payment extends Model
      */
     protected $casts = [
         'amount' => 'decimal:2',
+        'amount_received' => 'decimal:2',
         'should_exclude_credit_card' => 'boolean',
         'should_send_email' => 'boolean',
         'available_banks' => 'array',
@@ -114,6 +116,11 @@ class Payment extends Model
     public function examination(): BelongsTo
     {
         return $this->belongsTo(Examination::class, 'examination_id');
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo( User::class, 'user_id');
     }
 
     /**
@@ -193,8 +200,8 @@ class Payment extends Model
      */
     public function isExpired(): bool
     {
-        return $this->status === self::STATUSES['EXPIRED'] || 
-               ($this->expiry_date && Carbon::now()->isAfter($this->expiry_date));
+        return $this->status === self::STATUSES['EXPIRED'] ||
+            ($this->expiry_date && Carbon::now()->isAfter($this->expiry_date));
     }
 
     /**
@@ -323,7 +330,7 @@ class Payment extends Model
         }
 
         $expiry = Carbon::parse($this->expiry_date);
-        
+
         if ($expiry->isPast()) {
             return 'Sudah kedaluwarsa';
         }
@@ -373,7 +380,7 @@ class Payment extends Model
     public function updateFromXenditWebhook(array $webhookData): bool
     {
         $this->status = strtolower($webhookData['status']);
-        
+
         if (isset($webhookData['paid_at'])) {
             $this->paid_at = Carbon::parse($webhookData['paid_at']);
         }
