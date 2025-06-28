@@ -662,6 +662,9 @@ class AdminController extends Controller
                 'status' => 'completed',
             ]);
 
+            // Kirim notifikasi email jika pasien memiliki email
+            $this->sendResultNotificationEmail($examination);
+
             Log::info('Result uploaded successfully', [
                 'examination_id' => $examination->id,
                 'media_id' => $mediaItem->id,
@@ -669,7 +672,7 @@ class AdminController extends Controller
             ]);
 
             return redirect()->route('staff.examinations.index')
-                ->with('success', 'Hasil pemeriksaan berhasil diunggah dan status diperbarui!');
+                ->with('success', 'Hasil pemeriksaan berhasil diunggah, status diperbarui, dan notifikasi email telah dikirim!');
         } catch (\Spatie\MediaLibrary\MediaCollections\Exceptions\FileIsTooBig $e) {
             return redirect()->back()
                 ->withInput()
@@ -695,6 +698,48 @@ class AdminController extends Controller
         }
     }
 
+    /**
+     * Send email notification when examination result is available
+     */
+    private function sendResultNotificationEmail(Examination $examination)
+    {
+        try {
+            // Load relasi yang diperlukan
+            $examination->load(['patient', 'serviceItem.category']);
+            
+            $patient = $examination->patient;
+            
+            // Cek apakah pasien memiliki email
+            if (!$patient || !$patient->email) {
+                Log::info('Email notification not sent - patient email not available', [
+                    'examination_id' => $examination->id,
+                    'patient_id' => $patient->id ?? null
+                ]);
+                return;
+            }
+            
+            // Kirim email
+            \Illuminate\Support\Facades\Mail::to($patient->email)
+                ->send(new \App\Mail\ExaminationResultAvailable($examination));
+            
+            Log::info('Result notification email sent successfully', [
+                'examination_id' => $examination->id,
+                'patient_id' => $patient->id,
+                'patient_email' => $patient->email,
+                'sent_at' => now()
+            ]);
+            
+        } catch (\Exception $e) {
+            // Jangan throw exception agar proses upload tetap berhasil
+            // Hanya log error saja
+            Log::error('Failed to send result notification email', [
+                'examination_id' => $examination->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+        }
+    }
+
     public function markResultAvailable(Examination $examination)
     {
         try {
@@ -704,9 +749,12 @@ class AdminController extends Controller
             }
 
             $examination->update(['result_available' => true]);
+            
+            // Kirim notifikasi email
+            $this->sendResultNotificationEmail($examination);
 
             return redirect()->back()
-                ->with('success', 'Hasil pemeriksaan berhasil ditandai sebagai tersedia.');
+                ->with('success', 'Hasil pemeriksaan berhasil ditandai sebagai tersedia dan notifikasi email telah dikirim.');
         } catch (\Exception $e) {
             Log::error('Mark result available failed', [
                 'examination_id' => $examination->id,

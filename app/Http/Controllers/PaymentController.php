@@ -86,11 +86,7 @@ class PaymentController extends Controller
                 $this->updatePaymentToPaid($payment);
                 $this->updateExaminationToScheduled($examination);
 
-                return view('patient.examination.payment', [
-                    'examination' => $examination,
-                    'payment' => $payment,
-                    'message' => 'Pembayaran berhasil! Pemeriksaan Anda telah dikonfirmasi.'
-                ]);
+                return redirect()->route('receipt', ['examinationId' => $examination->id]);
             });
 
         } catch (Exception $e) {
