@@ -368,12 +368,12 @@
     <div class="receipt-wrapper">
         <div class="receipt-container">
             <div class="receipt-header">
-                <div class="clinic-logo">🏥</div>
-                <div class="clinic-name">KLINIK MEDIKA</div>
+                {{-- <div class="clinic-logo">🏥</div> --}}
+                <div class="clinic-name">{{ env('APP_NAME') }}</div>
                 <div class="clinic-subtitle">
-                    Jl. Kesehatan Bersama No. 123<br>
-                    Jakarta Selatan 12345<br>
-                    Telp: (021) 1234-5678
+                    Jl. Veteran No.4, Tebing Tinggi Lama, Kec. Tebing Tinggi Kota<br>
+                    Kota Tebing Tinggi, Sumatera Utara 20616<br>
+                    Telp: (061) 22423
                 </div>
             </div>
 
