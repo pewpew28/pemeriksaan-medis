@@ -15,7 +15,9 @@ use Spatie\MediaLibrary\MediaCollections\Exceptions\FileIsTooBig;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\PatientsExport;
 use App\Exports\ExaminationsExport;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class AdminController extends Controller
@@ -114,7 +116,10 @@ class AdminController extends Controller
 
     public function showPatient(Patient $patient)
     {
-        $patient->load('examinations');
+        $patient->load(['examinations' => function ($query) {
+            $query->latest('created_at');
+        }]);
+
         return view('staff.patients.show', compact('patient'));
     }
 
@@ -522,6 +527,243 @@ class AdminController extends Controller
         ));
     }
 
+    public function createExamination()
+    {
+        $patient = Patient::get();
+        $serviceCategories = ServiceCategory::with('serviceItems')->where('is_active', true)->get();
+        return view('staff.examinations.create', compact('patient', 'serviceCategories'));
+    }
+
+    public function storeExamination(Request $request)
+    {
+        // Log incoming request data
+        Log::info('StoreExamination - Request received', [
+            'request_data' => $request->all(),
+            'user_id' => auth()->id(),
+            'timestamp' => now()
+        ]);
+
+        try {
+            // Validate request data
+            Log::info('StoreExamination - Starting validation');
+
+            $validated = $request->validate([
+                'patient_id' => 'required|exists:patients,id',
+                'service_item_id' => 'required|exists:service_items,id',
+                'scheduled_date' => 'required|date|after_or_equal:today',
+                'scheduled_time' => 'required|date_format:H:i',
+                'pickup_requested' => 'sometimes|boolean',
+                'pickup_address' => 'nullable|string|max:500',
+                'pickup_location_map' => 'nullable|string|max:1000',
+                'pickup_time' => 'nullable|date_format:H:i',
+                'notes' => 'nullable|string|max:1000',
+                'final_price' => 'required|numeric|min:0',
+                'payment_method' => 'required|in:cash,online',
+            ]);
+
+            Log::info('StoreExamination - Validation successful', [
+                'validated_data' => $validated
+            ]);
+
+            DB::beginTransaction();
+            Log::info('StoreExamination - Database transaction started');
+
+            // Generate custom examination ID
+            Log::info('StoreExamination - Generating examination ID');
+            $examinationId = $this->generateExaminationId(
+                $validated['patient_id'],
+                $validated['service_item_id']
+            );
+
+            Log::info('StoreExamination - Generated examination ID', [
+                'examination_id' => $examinationId
+            ]);
+
+            // Get service item details
+            Log::info('StoreExamination - Fetching service item details', [
+                'service_item_id' => $validated['service_item_id']
+            ]);
+
+            $serviceItem = ServiceItem::findOrFail($validated['service_item_id']);
+
+            Log::info('StoreExamination - Service item retrieved', [
+                'service_item' => [
+                    'id' => $serviceItem->id,
+                    'name' => $serviceItem->name
+                ]
+            ]);
+
+            // Combine scheduled date and time
+            Log::info('StoreExamination - Processing scheduled datetime', [
+                'scheduled_date' => $validated['scheduled_date'],
+                'scheduled_time' => $validated['scheduled_time']
+            ]);
+
+            $scheduledDateTime = Carbon::createFromFormat(
+                'Y-m-d H:i',
+                $validated['scheduled_date'] . ' ' . $validated['scheduled_time']
+            );
+
+            Log::info('StoreExamination - Scheduled datetime created', [
+                'scheduled_datetime' => $scheduledDateTime->toDateTimeString()
+            ]);
+
+            // Handle pickup request and time
+            $pickupRequested = isset($validated['pickup_requested']) ? (bool)$validated['pickup_requested'] : false;
+            $pickupDateTime = null;
+
+            Log::info('StoreExamination - Processing pickup request', [
+                'pickup_requested_raw' => $validated['pickup_requested'] ?? 'not_set',
+                'pickup_requested_bool' => $pickupRequested,
+                'pickup_time' => $validated['pickup_time'] ?? 'not_set'
+            ]);
+
+            if ($pickupRequested && !empty($validated['pickup_time'])) {
+                Log::info('StoreExamination - Processing pickup datetime', [
+                    'pickup_time' => $validated['pickup_time']
+                ]);
+
+                try {
+                    $pickupDateTime = Carbon::createFromFormat(
+                        'Y-m-d H:i',
+                        $validated['scheduled_date'] . ' ' . $validated['pickup_time']
+                    );
+
+                    Log::info('StoreExamination - Pickup datetime created', [
+                        'pickup_datetime' => $pickupDateTime->toDateTimeString()
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error('StoreExamination - Failed to create pickup datetime', [
+                        'error' => $e->getMessage(),
+                        'pickup_time' => $validated['pickup_time'],
+                        'scheduled_date' => $validated['scheduled_date']
+                    ]);
+                    throw new \Exception('Format waktu pickup tidak valid: ' . $e->getMessage());
+                }
+            }
+
+            // Prepare examination data
+            $examinationData = [
+                'id' => $examinationId,
+                'patient_id' => $validated['patient_id'],
+                'service_item_id' => $validated['service_item_id'],
+                'scheduled_date' => $validated['scheduled_date'],
+                'scheduled_time' => $scheduledDateTime,
+                'pickup_requested' => $pickupRequested,
+                'pickup_address' => $validated['pickup_address'] ?? null,
+                'pickup_location_map' => $validated['pickup_location_map'] ?? null,
+                'pickup_time' => $pickupDateTime,
+                'status' => 'created',
+                'notes' => $validated['notes'] ?? null,
+                'result_available' => false,
+                'payment_status' => Examination::PAYMENT_PENDING,
+                'payment_method' => $validated['payment_method'],
+                'final_price' => $validated['final_price'],
+            ];
+
+            Log::info('StoreExamination - Creating examination record', [
+                'examination_data' => $examinationData
+            ]);
+
+            // Create examination
+            $examination = Examination::create($examinationData);
+
+            Log::info('StoreExamination - Examination created successfully', [
+                'examination_id' => $examination->id,
+                'patient_id' => $examination->patient_id
+            ]);
+
+            DB::commit();
+            Log::info('StoreExamination - Database transaction committed');
+
+            // Determine redirect route based on payment method
+            $successMessage = 'Pemeriksaan berhasil dibuat dengan ID: ' . $examinationId;
+
+            if ($validated['payment_method'] === 'cash') {
+                Log::info('StoreExamination - Redirecting to cash payment form', [
+                    'examination_id' => $examinationId
+                ]);
+
+                return redirect()
+                    ->route('staff.examinations.payment.form', ['examinationId' => $examination->id])
+                    ->with('success', $successMessage . '. Silakan lakukan pembayaran tunai.');
+            } else {
+                Log::info('StoreExamination - Redirecting to online payment', [
+                    'examination_id' => $examinationId
+                ]);
+
+                return redirect()
+                    ->route('payments.form', ['examination' => $examination])
+                    ->with('success', $successMessage . '. Silakan lakukan pembayaran online.');
+            }
+        } catch (ValidationException $e) {
+            Log::error('StoreExamination - Validation failed', [
+                'errors' => $e->errors(),
+                'request_data' => $request->all()
+            ]);
+
+            return redirect()
+                ->back()
+                ->withInput()
+                ->withErrors($e->errors())
+                ->with('error', 'Data yang dimasukkan tidak valid. Silakan periksa kembali.');
+        } catch (\Exception $e) {
+            DB::rollback();
+
+            Log::error('StoreExamination - Exception occurred', [
+                'error_message' => $e->getMessage(),
+                'error_file' => $e->getFile(),
+                'error_line' => $e->getLine(),
+                'stack_trace' => $e->getTraceAsString(),
+                'request_data' => $request->all()
+            ]);
+
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('error', 'Gagal membuat pemeriksaan: ' . $e->getMessage());
+        }
+    }
+
+    private function generateExaminationId($userId, $serviceItemId)
+    {
+        // Batasi user_id dan service_item_id untuk menghemat digit
+        $userIdPart = str_pad($userId % 999, 2, '0', STR_PAD_LEFT); // 2 digit (01-99)
+        $serviceItemPart = str_pad($serviceItemId % 99, 2, '0', STR_PAD_LEFT); // 2 digit (01-99)
+
+        // Tanggal dalam format YYMM (4 digit) atau YMD (3-4 digit)
+        $datePart = date('ymd'); // 6 digit: 250618 untuk 18 Juni 2025
+
+        // Ambil 4 digit terakhir dari tanggal (MMDD)
+        $shortDatePart = substr($datePart, 2, 4); // 0618
+
+        // Buat base ID (6 digit)
+        $baseId = $userIdPart . $serviceItemPart . $shortDatePart;
+
+        // Cek apakah ID sudah ada, jika ya tambahkan sequence number
+        $finalId = $baseId;
+        $sequence = 1;
+
+        while (Examination::where('id', $finalId)->exists()) {
+            if (strlen($baseId . $sequence) <= 9) {
+                $finalId = $baseId . $sequence;
+            } else {
+                // Jika melebihi 9 digit, gunakan format yang lebih pendek
+                $shortBaseId = $userIdPart . $serviceItemPart . substr($shortDatePart, 2, 2); // 4 digit
+                $finalId = $shortBaseId . str_pad($sequence, 2, '0', STR_PAD_LEFT);
+            }
+            $sequence++;
+
+            // Failsafe: jika sequence terlalu tinggi, gunakan timestamp
+            if ($sequence > 999) {
+                $finalId = $userIdPart . $serviceItemPart . substr(time(), -3);
+                break;
+            }
+        }
+
+        return $finalId;
+    }
+
     public function showPaymentCashForm($examinationId)
     {
 
@@ -706,9 +948,9 @@ class AdminController extends Controller
         try {
             // Load relasi yang diperlukan
             $examination->load(['patient', 'serviceItem.category']);
-            
+
             $patient = $examination->patient;
-            
+
             // Cek apakah pasien memiliki email
             if (!$patient || !$patient->email) {
                 Log::info('Email notification not sent - patient email not available', [
@@ -717,18 +959,17 @@ class AdminController extends Controller
                 ]);
                 return;
             }
-            
+
             // Kirim email
             \Illuminate\Support\Facades\Mail::to($patient->email)
                 ->send(new \App\Mail\ExaminationResultAvailable($examination));
-            
+
             Log::info('Result notification email sent successfully', [
                 'examination_id' => $examination->id,
                 'patient_id' => $patient->id,
                 'patient_email' => $patient->email,
                 'sent_at' => now()
             ]);
-            
         } catch (\Exception $e) {
             // Jangan throw exception agar proses upload tetap berhasil
             // Hanya log error saja
@@ -749,7 +990,7 @@ class AdminController extends Controller
             }
 
             $examination->update(['result_available' => true]);
-            
+
             // Kirim notifikasi email
             $this->sendResultNotificationEmail($examination);
 
@@ -784,7 +1025,7 @@ class AdminController extends Controller
     {
         $users = User::with('roles')->paginate(10);
         $totalAdmin = User::where('role', 'admin')->count();
-        $totalStaff = User::whereIn('role', ['perawat','cs'])->count(); 
+        $totalStaff = User::whereIn('role', ['perawat', 'cs'])->count();
         $totalPasien = User::where('role', 'pasien')->count();
         return view('staff.user.index', compact('users', 'totalAdmin', 'totalStaff', 'totalPasien'));
     }

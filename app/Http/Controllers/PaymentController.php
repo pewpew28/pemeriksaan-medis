@@ -29,9 +29,9 @@ class PaymentController extends Controller
     {
         try {
             $examination = $this->findExaminationWithRelations($examinationId);
-            
+
             $this->validateExaminationForPayment($examination);
-            
+
             $existingPayment = $this->findActivePayment($examination->id);
             if ($existingPayment) {
                 Log::info('Redirecting to existing active invoice', [
@@ -43,9 +43,9 @@ class PaymentController extends Controller
 
             return DB::transaction(function () use ($examination) {
                 $invoice = $this->xenditService->createInvoice($examination);
-                
+
                 $payment = $this->createPaymentRecord($examination, $invoice);
-                
+
                 $examination->update(['status' => 'pending_payment']);
 
                 Log::info('Xendit Invoice created successfully', [
@@ -55,7 +55,6 @@ class PaymentController extends Controller
 
                 return redirect()->away($invoice['invoice_url']);
             });
-
         } catch (Exception $e) {
             Log::error('Error creating invoice payment', [
                 'examination_id' => $examinationId,
@@ -76,7 +75,7 @@ class PaymentController extends Controller
     {
         try {
             $examination = $this->findExaminationWithRelations($examinationId);
-            
+
             $payment = $this->findLatestPayment($examination->id);
             if (!$payment) {
                 return $this->handleMissingPayment($examination);
@@ -88,7 +87,6 @@ class PaymentController extends Controller
 
                 return redirect()->route('receipt', ['examinationId' => $examination->id]);
             });
-
         } catch (Exception $e) {
             Log::error('Error processing payment success', [
                 'examination_id' => $examinationId,
@@ -108,7 +106,7 @@ class PaymentController extends Controller
     {
         try {
             $examination = $this->findExaminationWithRelations($examinationId);
-            
+
             $payment = $this->findLatestPayment($examination->id);
 
             return DB::transaction(function () use ($examination, $payment) {
@@ -129,7 +127,6 @@ class PaymentController extends Controller
                     'message' => 'Pembayaran gagal atau dibatalkan. Silakan coba lagi atau hubungi customer service.'
                 ]);
             });
-
         } catch (Exception $e) {
             Log::error('Error processing payment failure', [
                 'examination_id' => $examinationId,
@@ -149,17 +146,16 @@ class PaymentController extends Controller
     {
         try {
             $examination = Examination::findOrFail($request->examination_id);
-            
+
             $examination->update([
                 'payment_method' => $request->payment_method,
                 'payment_status' => 'pending'
             ]);
 
             return response()->json([
-                'success' => true, 
+                'success' => true,
                 'message' => 'Payment method updated'
             ]);
-
         } catch (Exception $e) {
             Log::error('Error updating payment method', [
                 'examination_id' => $request->examination_id,
@@ -195,7 +191,6 @@ class PaymentController extends Controller
             return redirect()
                 ->route('pasien.examinations.index', ['examination' => $examinationId])
                 ->with('success', 'Pilihan pembayaran tunai telah dicatat. Silakan bayar di kasir klinik.');
-
         } catch (Exception $e) {
             Log::error('Error confirming cash payment', [
                 'examination_id' => $examinationId,
@@ -215,12 +210,12 @@ class PaymentController extends Controller
     {
         try {
             $examination = $this->findExaminationWithRelations($examinationId);
-            
+
             $this->validateCashPayment($examination, $request->amount_received);
 
             return DB::transaction(function () use ($examination, $request) {
                 $payment = $this->createCashPaymentRecord($examination, $request);
-                
+
                 $this->updateExaminationAfterCashPayment($examination);
 
                 Log::info('Cash payment processed successfully', [
@@ -231,7 +226,6 @@ class PaymentController extends Controller
 
                 return redirect()->route('staff.payments.receipt', ['examination' => $examination->id]);
             });
-
         } catch (Exception $e) {
             Log::error('Error processing cash payment', [
                 'examination_id' => $examinationId,
@@ -252,7 +246,7 @@ class PaymentController extends Controller
     {
         try {
             $examination = Examination::with(['patient', 'serviceItem.category'])->find($examinationId);
-            
+
             if (!$examination) {
                 return view('errors.404')->with('message', 'Pemeriksaan tidak ditemukan.');
             }
@@ -267,9 +261,8 @@ class PaymentController extends Controller
             }
 
             $receiptData = $this->prepareReceiptData($examination, $payment);
-            
-            return view('layouts.invoice', compact('receiptData'));
 
+            return view('layouts.invoice', compact('receiptData'));
         } catch (Exception $e) {
             Log::error('Error getting cash payment receipt', [
                 'examination_id' => $examinationId,
@@ -280,23 +273,28 @@ class PaymentController extends Controller
         }
     }
 
+    public function paymentOnlineForm(Examination $examination)
+    {
+        return view('layouts.payment', compact('examination'));
+    }
+
     // Private helper methods
 
     private function findExaminationWithRelations($examinationId)
     {
         $examination = Examination::with('patient', 'serviceItem')->find($examinationId);
-        
+
         if (!$examination) {
             throw new Exception('Examination not found');
         }
-        
+
         return $examination;
     }
 
     private function validateExaminationForPayment($examination)
     {
         $validStatuses = ['pending', 'created', 'pending_cash_payment', 'pending_payment'];
-        
+
         if (!in_array($examination->status, $validStatuses)) {
             throw new Exception('Payment cannot be created for this examination status: ' . $examination->status);
         }
@@ -388,7 +386,7 @@ class PaymentController extends Controller
     private function createCashPaymentRecord($examination, $request)
     {
         $expectedAmount = (float) $examination->serviceItem->price;
-        
+
         return Payment::updateOrCreate(
             [
                 'examination_id' => $examination->id,

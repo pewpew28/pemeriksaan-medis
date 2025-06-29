@@ -31,7 +31,7 @@ Route::get('/dashboard', [DashboardController::class, 'index']) // Buat Dashboar
     ->name('dashboard');
 
 Route::get('/receipt/{examinationId}', [PaymentController::class, 'getCashPaymentReceipt'])->name('receipt');
-
+Route::get('payments/form/{examination}', [PaymentController::class, 'paymentOnlineForm'])->name('payments.form');
 // Rute Profil (dari Laravel Breeze)
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -99,8 +99,11 @@ Route::middleware(['auth'])->prefix('staff')->name('staff.')->group(function () 
 
         // Melihat daftar pemeriksaan pasien (untuk CS juga)
         Route::get('/examinations', [AdminController::class, 'indexExaminations'])->name('examinations.index');
-        Route::get('/examinations/create', [AdminController::class, 'indexExaminations'])->name('examinations.create');
+        Route::get('/examinations/create', [AdminController::class, 'createExamination'])->name('examinations.create');
+        Route::post('/examinations/store', [AdminController::class, 'storeExamination'])->name('examinations.store');
         Route::get('/examinations/payment/{examinationId}', [AdminController::class, 'showPaymentCashForm'])->name('examinations.payment.form');
+        Route::get('/pembayaran/{examination}/success', [PaymentController::class, 'paymentSuccess'])->name('payment.success');
+        Route::get('/pembayaran/{examination}/failed', [PaymentController::class, 'paymentFailed'])->name('payment.failed');
         Route::post('/examinations/{examination}/payment/cash', [PaymentController::class, 'processCashPayment'])
             ->name('examinations.payment.cash');
         Route::get('/staff/payments/{examination}/receipt', [PaymentController::class, 'getCashPaymentReceipt'])

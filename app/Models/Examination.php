@@ -66,10 +66,12 @@ class Examination extends Model implements HasMedia
     protected static function boot()
     {
         parent::boot();
-        
+
         static::creating(function ($model) {
-            if (empty($model->{$model->getKeyName()})) {
-                $model->{$model->getKeyName()} = (string) Str::uuid();
+            // Hanya generate UUID jika ID tidak ada atau kosong string
+            $keyName = $model->getKeyName();
+            if (!isset($model->{$keyName}) || $model->{$keyName} === '' || $model->{$keyName} === null) {
+                $model->{$keyName} = (string) Str::uuid();
             }
         });
     }

@@ -14,17 +14,21 @@ class XenditService
     public function __construct()
     {
         $secretKey = config('services.xendit.secret_key');
-        
+
         if (empty($secretKey)) {
             throw new \Exception('Xendit secret key not configured');
         }
-        
+
         Xendit::setApiKey($secretKey);
     }
 
     public function createInvoice($examination)
     {
         $externalId = 'EXAM-' . $examination->id . '-INV-' . Carbon::now()->format('YmdHis') . '-' . uniqid();
+
+        // Get base URL based on user role
+        $user = auth()->user();
+        $baseUrl = $this->getBaseUrlByRole($user);
 
         $params = [
             'external_id' => $externalId,
@@ -35,10 +39,10 @@ class XenditService
                 'given_names' => $examination->patient->name,
                 'mobile_number' => $examination->patient->phone_number ?? null,
             ],
-            'invoice_duration' => 86400, // 24 hours
+            'invoice_duration' => 86400,
             'callback_url' => url('/api/xendit/webhook'),
-            'success_redirect_url' => url('/pasien/pembayaran/' . $examination->id . '/success'),
-            'failure_redirect_url' => url('/pasien/pembayaran/' . $examination->id . '/failed'),
+            'success_redirect_url' => url($baseUrl . '/pembayaran/' . $examination->id . '/success'),
+            'failure_redirect_url' => url($baseUrl . '/pembayaran/' . $examination->id . '/failed'),
         ];
 
         Log::info('Creating Xendit Invoice', ['params' => $params]);
@@ -52,5 +56,16 @@ class XenditService
             ]);
             throw $e;
         }
+    }
+    private function getBaseUrlByRole($user)
+    {
+        if (!$user) return '';
+
+        return match ($user->role) {
+            'admin' => '/staff',
+            'cs', 'customer_service' => '/staff',
+            'patient', 'pasien' => '/pasien',
+            default => ''
+        };
     }
 }
