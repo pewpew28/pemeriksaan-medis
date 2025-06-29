@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Login - Healthcare+</title>
+    <title>Login - {{ env('APP_NAME') }}</title>
     <link rel="shortcut icon" href="assets/icon/healthcare-icon.png" type="image/x-icon">
 
     <link rel="preconnect" href="https://fonts.bunny.net">
@@ -68,10 +68,7 @@
                 <div class="flex justify-between h-16">
                     <div class="flex items-center">
                         <a href="{{ route('welcome') }}" class="flex items-center space-x-2">
-                            <div class="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
-                                <img src="{{ asset('assets/icon/healthcare-icon.png') }}" alt="" class="w-full h-full">
-                            </div>
-                            <span class="text-white font-bold text-xl">Healthcare+</span>
+                            <span class="text-white font-bold text-xl">{{ env('APP_NAME') }}</span>
                         </a>
                     </div>
                     <div class="flex items-center space-x-4">
@@ -99,7 +96,7 @@
                             </svg>
                         </div>
                         <h2 class="text-2xl font-bold text-gray-800 mb-2">Selamat Datang Kembali</h2>
-                        <p class="text-gray-600">Masuk ke akun Healthcare+ Anda</p>
+                        <p class="text-gray-600">Masuk ke akun Anda</p>
                     </div>
 
                     <!-- Session Status (placeholder) -->

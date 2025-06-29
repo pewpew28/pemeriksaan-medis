@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Healthcare+ | Layanan Kesehatan Terpercaya</title>
+    <title>{{ $identity['name'] }}</title>
     <link rel="shortcut icon" href="assets/icon/healthcare-icon.png" type="image/x-icon">
 
     <link rel="preconnect" href="https://fonts.bunny.net">
@@ -95,11 +95,7 @@
                 <div class="flex items-center">
                     <div class="shrink-0 flex items-center">
                         <div class="flex items-center space-x-3">
-                            <div
-                                class="w-10 h-10 bg-white border border-blue-600 rounded-lg flex items-center justify-center">
-                                <img src="{{ asset('assets/icon/healthcare-icon.png') }}" alt="">
-                            </div>
-                            <span class="text-xl font-bold gradient-text">Healthcare+</span>
+                            <span class="text-xl font-bold gradient-text">{{ $identity['name'] }}</span>
                         </div>
                     </div>
                 </div>
@@ -200,12 +196,12 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
                 <div class="hover-lift bg-white p-6 rounded-2xl shadow-sm">
-                    <div class="stat-counter">10K+</div>
+                    <div class="stat-counter">{{ $pasien }}+</div>
                     <p class="text-gray-600 font-medium">Pasien Terlayani</p>
                 </div>
                 <div class="hover-lift bg-white p-6 rounded-2xl shadow-sm">
-                    <div class="stat-counter">50+</div>
-                    <p class="text-gray-600 font-medium">Dokter Spesialis</p>
+                    <div class="stat-counter">{{ $layanan }}+</div>
+                    <p class="text-gray-600 font-medium">Layanan</p>
                 </div>
                 <div class="hover-lift bg-white p-6 rounded-2xl shadow-sm">
                     <div class="stat-counter">24/7</div>
@@ -369,7 +365,7 @@
     <section class="py-20 bg-gradient-to-br from-gray-50 to-blue-50" id="about">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="text-center mb-16">
-                <span class="text-blue-600 font-semibold text-lg mb-2 block">MENGAPA HEALTHCARE+</span>
+                <span class="text-blue-600 font-semibold text-lg mb-2 block uppercase">MENGAPA {{ $identity['name'] }}</span>
                 <h2 class="text-4xl sm:text-5xl font-bold mb-6 text-gray-900">
                     Komitmen Pada <span class="gradient-text">Keunggulan</span>
                 </h2>
@@ -559,71 +555,14 @@
                 <!-- Company Info -->
                 <div class="lg:col-span-2">
                     <div class="flex items-center space-x-3 mb-6">
-                        <div
-                            class="w-10 h-10 bg-gradient-to-r from-blue-600 to-indigo-700 rounded-lg flex items-center justify-center">
-                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z">
-                                </path>
-                            </svg>
-                        </div>
-                        <span class="text-2xl font-bold">Healthcare+</span>
+                        <span class="text-2xl font-bold">{{ $identity['name'] }}</span>
                     </div>
                     <p class="text-gray-400 mb-6 max-w-md leading-relaxed">
                         Platform kesehatan digital terdepan di Indonesia yang menghubungkan Anda dengan layanan medis
                         berkualitas tinggi, kapan saja dan di mana saja.
                     </p>
-                    <div class="flex space-x-4">
-                        <a href="#"
-                            class="w-10 h-10 bg-gray-800 hover:bg-blue-600 rounded-full flex items-center justify-center transition-colors">
-                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                                <path
-                                    d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z" />
-                            </svg>
-                        </a>
-                        <a href="#"
-                            class="w-10 h-10 bg-gray-800 hover:bg-blue-600 rounded-full flex items-center justify-center transition-colors">
-                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                                <path
-                                    d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 5.079 3.158 9.417 7.618 11.174-.105-.949-.199-2.403.041-3.439.219-.937 1.406-5.957 1.406-5.957s-.359-.72-.359-1.781c0-1.663.967-2.911 2.168-2.911 1.024 0 1.518.769 1.518 1.688 0 1.029-.653 2.567-.992 3.992-.285 1.193.6 2.165 1.775 2.165 2.128 0 3.768-2.245 3.768-5.487 0-2.861-2.063-4.869-5.008-4.869-3.41 0-5.409 2.562-5.409 5.199 0 1.033.394 2.143.889 2.741.099.12.112.225.085.345-.09.375-.293 1.199-.334 1.363-.053.225-.172.271-.402.165-1.495-.69-2.433-2.878-2.433-4.646 0-3.776 2.748-7.252 7.92-7.252 4.158 0 7.392 2.967 7.392 6.923 0 4.135-2.607 7.462-6.233 7.462-1.214 0-2.357-.629-2.746-1.378l-.753 2.87c-.27 1.056-1.009 2.378-1.5 3.185C9.558 23.673 10.763 24 12.017 24c6.624 0 11.99-5.367 11.99-11.987C24.007 5.367 18.641.001 12.017.001z" />
-                            </svg>
-                        </a>
-                        <a href="#"
-                            class="w-10 h-10 bg-gray-800 hover:bg-blue-600 rounded-full flex items-center justify-center transition-colors">
-                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                                <path
-                                    d="M12.025 23.5c6.351 0 11.5-5.149 11.5-11.5s-5.149-11.5-11.5-11.5-11.5 5.149-11.5 11.5 5.149 11.5 11.5 11.5zm-4.721-17.24c.694-.512 1.54-.781 2.721-.781 2.13 0 3.378 1.179 3.378 3.085 0 1.906-1.248 3.085-3.378 3.085h-1.721v-5.389zm0 7.389h2.221c2.13 0 3.378 1.179 3.378 3.085 0 1.906-1.248 3.085-3.378 3.085-1.181 0-2.027-.269-2.721-.781v-5.389z" />
-                            </svg>
-                        </a>
-                        <a href="#"
-                            class="w-10 h-10 bg-gray-800 hover:bg-blue-600 rounded-full flex items-center justify-center transition-colors">
-                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                                <path
-                                    d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z" />
-                            </svg>
-                        </a>
-                    </div>
                 </div>
 
-                <!-- Quick Links -->
-                <div>
-                    <h3 class="text-lg font-bold mb-6">Layanan Kami</h3>
-                    <ul class="space-y-3">
-                        <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Konsultasi
-                                Online</a></li>
-                        <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Medical
-                                Check-up</a></li>
-                        <li><a href="#"
-                                class="text-gray-400 hover:text-white transition-colors">Laboratorium</a></li>
-                        <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Radiologi</a>
-                        </li>
-                        <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Farmasi
-                                Online</a></li>
-                        <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Layanan
-                                Darurat</a></li>
-                    </ul>
-                </div>
 
                 <!-- Contact Info -->
                 <div>
@@ -639,8 +578,8 @@
                                     d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
                             </svg>
                             <div>
-                                <p class="text-gray-400">Jl. Kesehatan Merdeka No. 123</p>
-                                <p class="text-gray-400">Medan, Sumatera Utara 20111</p>
+                                <p class="text-gray-400">Jl. Veteran No.4, Tebing Tinggi Lama, Kec. Tebing Tinggi Kota</p>
+                                <p class="text-gray-400">Kota Tebing Tinggi, Sumatera Utara 20616</p>
                             </div>
                         </div>
                         <div class="flex items-center space-x-3">
@@ -650,16 +589,7 @@
                                     d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z">
                                 </path>
                             </svg>
-                            <p class="text-gray-400">+62 61 123-4567</p>
-                        </div>
-                        <div class="flex items-center space-x-3">
-                            <svg class="w-5 h-5 text-blue-400 flex-shrink-0" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z">
-                                </path>
-                            </svg>
-                            <p class="text-gray-400">info@healthcareplus.id</p>
+                            <p class="text-gray-400">{{ $identity['no_telp'] }}</p>
                         </div>
                         <div class="flex items-center space-x-3">
                             <svg class="w-5 h-5 text-blue-400 flex-shrink-0" fill="none" stroke="currentColor"
@@ -667,7 +597,7 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                             </svg>
-                            <p class="text-gray-400">24/7 Layanan Darurat</p>
+                            <p class="text-gray-400">00.08 - 17.00</p>
                         </div>
                     </div>
                 </div>
@@ -677,7 +607,7 @@
 
             <div class="flex flex-col md:flex-row justify-between items-center">
                 <div class="text-gray-400 text-sm mb-4 md:mb-0">
-                    &copy; 2024 Healthcare+. Semua hak dilindungi undang-undang.
+                    &copy; 2024 {{ $identity['name'] }}. Semua hak dilindungi undang-undang.
                 </div>
                 <div class="flex space-x-6 text-sm">
                     <a href="#" class="text-gray-400 hover:text-white transition-colors">Kebijakan Privasi</a>

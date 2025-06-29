@@ -498,7 +498,7 @@ class AdminController extends Controller
 
         $statistics = [
             'totalExaminations' => Examination::count(),
-            'pendingPayment' => Examination::whereIn('status', ['pending_payment', 'pending_cash_payment'])->count(),
+            'pendingPayment' => Examination::whereIn('status', ['pending_payment', 'pending_cash_payment', 'created'])->count(),
             'completed' => Examination::where('status', 'completed')->count(),
             'scheduled' => Examination::where('status', 'scheduled')->count(),
             'totalRevenue' => Examination::where('payment_status', 'paid')->sum('final_price'),
@@ -767,7 +767,7 @@ class AdminController extends Controller
     public function showPaymentCashForm($examinationId)
     {
 
-        $examination = Examination::find($examinationId);
+        $examination = Examination::with('serviceItem')->find($examinationId);
         return view('staff.examinations.payment', compact('examination'));
     }
 

@@ -7,6 +7,8 @@ use App\Http\Controllers\PatientController;
 use App\Http\Controllers\AdminController; // Bisa menangani admin, cs, perawat
 use App\Http\Controllers\DashboardController; // Untuk dashboard umum atau redirect
 use App\Http\Controllers\PaymentController;
+use App\Models\Patient;
+use App\Models\ServiceItem;
 
 /*
 |--------------------------------------------------------------------------
@@ -22,7 +24,15 @@ use App\Http\Controllers\PaymentController;
 // --- 1. Rute Umum & Landing Page ---
 // Ini adalah halaman utama yang bisa diakses siapa saja
 Route::get('/', function () {
-    return view('welcome');
+    $identity = [
+        "name" => "Laboratorium Klinik Semangat",
+        "address" => "Jl.veteran no 4",
+        "no_telp" => 22423,
+        "operation_time" => "00.08-17.00"
+    ];
+    $pasien = Patient::count();
+    $layanan = ServiceItem::count();
+    return view('welcome', compact('identity', 'pasien', 'layanan'));
 })->name('welcome');
 
 // Rute Dashboard setelah login (Laravel Breeze default)
@@ -32,12 +42,6 @@ Route::get('/dashboard', [DashboardController::class, 'index']) // Buat Dashboar
 
 Route::get('/receipt/{examinationId}', [PaymentController::class, 'getCashPaymentReceipt'])->name('receipt');
 Route::get('payments/form/{examination}', [PaymentController::class, 'paymentOnlineForm'])->name('payments.form');
-// Rute Profil (dari Laravel Breeze)
-Route::middleware('auth')->group(function () {
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-});
 
 // Otomatis mencakup rute login, register, password reset dari Breeze
 require __DIR__ . '/auth.php';

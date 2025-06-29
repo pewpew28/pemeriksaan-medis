@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Daftar - Healthcare+</title>
+    <title>Daftar - {{ env('APP_NAME') }}</title>
     <link rel="shortcut icon" href="assets/icon/healthcare-icon.png" type="image/x-icon">
 
     <link rel="preconnect" href="https://fonts.bunny.net">
@@ -51,14 +51,6 @@
 
 <body class="font-sans antialiased text-gray-900">
     <div class="min-h-screen bg-gradient-to-br from-blue-600 via-indigo-700 to-purple-800 relative overflow-hidden">
-        <!-- Background video -->
-        <video autoplay loop muted playsinline class="absolute z-0 w-full h-full object-cover opacity-20">
-            <source
-                src="https://assets.mixkit.co/videos/preview/mixkit-health-specialist-woman-explaining-to-patient-48356-large.mp4"
-                type="video/mp4" />
-            Your browser does not support the video tag.
-        </video>
-
         <!-- Overlay -->
         <div class="absolute inset-0 bg-gradient-to-br from-blue-900/40 via-indigo-900/40 to-purple-900/40 z-10"></div>
 
@@ -68,10 +60,7 @@
                 <div class="flex justify-between h-16">
                     <div class="flex items-center">
                         <a href="{{ route('welcome') }}" class="flex items-center space-x-2">
-                            <div class="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
-                                <img src="{{ asset('assets/icon/healthcare-icon.png') }}" alt="" class="w-full h-full">
-                            </div>
-                            <span class="text-white font-bold text-xl">Healthcare+</span>
+                            <span class="text-white font-bold text-xl">{{ env('APP_NAME') }}</span>
                         </a>
                     </div>
                     <div class="flex items-center space-x-4">
@@ -98,7 +87,7 @@
                                     d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
                             </svg>
                         </div>
-                        <h2 class="text-2xl font-bold text-gray-800 mb-2">Bergabung dengan Healthcare+</h2>
+                        <h2 class="text-2xl font-bold text-gray-800 mb-2">Bergabung dengan {{ env('APP_NAME') }}</h2>
                         <p class="text-gray-600">Buat akun baru untuk memulai perjalanan kesehatan Anda</p>
                     </div>
 

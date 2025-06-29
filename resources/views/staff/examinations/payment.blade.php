@@ -22,7 +22,7 @@
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700">Layanan</label>
-                                <p class="text-gray-900">{{ $examination->service_item_name }}</p>
+                                <p class="text-gray-900">{{ $examination->serviceItem->name }}</p>
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700">Status</label>
@@ -32,7 +32,7 @@
                                     @elseif($examination->status === 'scheduled') bg-yellow-100 text-yellow-800
                                     @else bg-gray-100 text-gray-800
                                     @endif">
-                                    {{ $examination->status_label }}
+                                    {{ $examination->status }}
                                 </span>
                             </div>
                             <div>

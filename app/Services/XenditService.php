@@ -64,7 +64,7 @@ class XenditService
         return match ($user->role) {
             'admin' => '/staff',
             'cs', 'customer_service' => '/staff',
-            'patient', 'pasien' => '/pasien',
+            'pasien' => '/pasien',
             default => ''
         };
     }
