@@ -22,7 +22,8 @@ return new class extends Migration
                   ->onDelete('cascade');
 
             // Basic payment information
-            $table->decimal('amount', 12, 2); // Increased precision for larger amounts
+            $table->decimal('amount', 12, 2); 
+            $table->decimal('amount_received', 12, 2)->nullable(); 
             $table->string('currency', 3)->default('IDR');
             $table->text('description')->nullable();
 

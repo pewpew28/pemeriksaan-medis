@@ -277,6 +277,14 @@
                                                 Detail
                                             </a>
 
+                                            @if ($examination->payment_status === 'paid')
+                                                <a href="{{ route('receipt', $examination->id) }}"
+                                                    class="inline-flex items-center px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors duration-200">
+                                                    <i class="fas fa-file mr-2"></i>
+                                                    Struk Pembayaran
+                                                </a>
+                                            @endif
+
                                             @if ($examination->result_available)
                                                 <a href="{{ route('pasien.result.download', $examination->id) }}"
                                                     class="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors duration-200">

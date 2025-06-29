@@ -25,13 +25,13 @@
                                 <p class="text-sm text-gray-500">Kelola data pemeriksaan pasien</p>
                             </div>
                         </div>
-                        {{-- @if (Auth::user()->role === 'admin' || Auth::user()->role === 'cs')
+                        @if (Auth::user()->role === 'admin' || Auth::user()->role === 'cs')
                             <a href="{{ route('staff.examinations.create') }}"
                                 class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors duration-200">
                                 <i class="fas fa-plus mr-2"></i>
                                 Tambah Pemeriksaan
                             </a>
-                        @endif --}}
+                        @endif
                     </div>
                 </div>
             </div>
@@ -462,13 +462,13 @@
                                                             <i class="fas fa-edit mr-1"></i>Bayar
                                                         </a>
                                                     @endif
-                                                    <button
+                                                    {{-- <button
                                                         class="inline-flex items-center px-3 py-1 bg-red-100 hover:bg-red-200 text-red-700 text-xs font-medium rounded-md transition-colors duration-200 delete-examination"
                                                         data-id="{{ $examination->id }}"
                                                         data-patient="{{ $examination->patient->name ?? 'Unknown' }}"
                                                         title="Hapus Data">
                                                         <i class="fas fa-trash mr-1"></i>Hapus
-                                                    </button>
+                                                    </button> --}}
                                                 @endif
 
                                             </div>
