@@ -34,11 +34,8 @@
     <!-- Logo Section -->
     <div class="flex items-center justify-center h-20 border-b border-blue-500 bg-blue-700">
         <div class="flex items-center space-x-3">
-            <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center">
-                <i class="fas fa-heartbeat text-blue-600 text-2xl"></i>
-            </div>
             <div>
-                <h1 class="text-white font-bold text-xl">HealthCare+</h1>
+                <h1 class="text-white font-bold text-xl">{{ env('APP_NAME') }}</h1>
                 <p class="text-blue-200 text-xs">Sistem Manajemen Kesehatan</p>
             </div>
         </div>
@@ -215,11 +212,11 @@
     <div class="p-4 border-t border-blue-500 bg-blue-700">
         <!-- Profile & Logout -->
         <div class="space-y-2">
-            <a href="{{ route('profile.edit') }}"
+            {{-- <a href="{{ route('profile') }}"
                 class="flex items-center px-4 py-2 text-blue-200 hover:text-white hover:bg-blue-600 rounded-lg transition-all duration-200">
                 <i class="fas fa-user-edit w-5 text-center"></i>
                 <span class="ml-4 text-sm">Profil Saya</span>
-            </a>
+            </a> --}}
 
             <form method="POST" action="{{ route('logout') }}" id="logout-form">
                 @csrf

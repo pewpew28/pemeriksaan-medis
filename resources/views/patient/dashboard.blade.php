@@ -390,7 +390,7 @@
                                         <i class="fas fa-phone text-blue-600"></i>
                                     </div>
                                     <div>
-                                        <p class="font-semibold text-gray-900">(021) 123-4567</p>
+                                        <p class="font-semibold text-gray-900">22423</p>
                                         <p class="text-gray-600 text-sm">Layanan 24 jam</p>
                                     </div>
                                 </div>
@@ -410,16 +410,8 @@
                             <h3 class="text-lg font-semibold text-gray-900 mb-4">Jam Operasional</h3>
                             <div class="bg-gray-50 rounded-lg p-4">
                                 <div class="flex justify-between items-center mb-2">
-                                    <span class="text-gray-700">Senin - Jumat</span>
-                                    <span class="font-semibold text-gray-900">08:00 - 17:00</span>
-                                </div>
-                                <div class="flex justify-between items-center mb-2">
-                                    <span class="text-gray-700">Sabtu</span>
-                                    <span class="font-semibold text-gray-900">08:00 - 14:00</span>
-                                </div>
-                                <div class="flex justify-between items-center">
-                                    <span class="text-gray-700">Minggu</span>
-                                    <span class="font-semibold text-red-600">Tutup</span>
+                                    <span class="text-gray-700">Setiap Hari</span>
+                                    <span class="font-semibold text-gray-900">00:08 - 17:00</span>
                                 </div>
                                 <div class="mt-3 pt-3 border-t border-gray-200">
                                     <p class="text-sm text-gray-600">

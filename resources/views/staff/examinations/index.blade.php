@@ -385,7 +385,7 @@
                                             {{ $examination->patient->name ?? '-' }}
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                            {{ $examination->scheduled_date ? \Carbon\Carbon::parse($examination->scheduled_date)->format('d/m/Y H:i') : '-' }}
+                                            {{ $examination->scheduled_date ? \Carbon\Carbon::parse($examination->scheduled_date)->format('d/m/Y') : '-' }}
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-center">
                                             @php

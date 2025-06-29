@@ -5,7 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <title>{{ 'HealthCare+' }}</title>
+        <title>{{ env('APP_NAME') }}</title>
         <link rel="shortcut icon" href="{{ asset('assets/icon/healthcare-icon.png') }}" type="image/x-icon">
 
         <!-- Scripts -->

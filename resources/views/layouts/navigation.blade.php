@@ -13,8 +13,7 @@
                             <img src="{{ asset('assets/icon/healthcare-icon.png') }}" alt="HealthCare+" class="w-6 h-6">
                         </div>
                         <div class="hidden md:block">
-                            <span class="text-white font-bold text-xl tracking-tight">HealthCare</span>
-                            <span class="text-blue-200 font-light text-xl">+</span>
+                            <span class="text-white font-bold text-xl tracking-tight">{{ env('APP_NAME') }}</span>
                         </div>
                     </a>
                 </div>
@@ -98,7 +97,7 @@
                         </div>
 
                         <div class="py-2">
-                            <x-dropdown-link :href="route('profile.edit')"
+                            <x-dropdown-link :href="route('pasien.profile')"
                                 class="flex items-center px-4 py-3 hover:bg-blue-50 transition-colors duration-200 group">
                                 <i class="fas fa-user mr-3 text-blue-500 group-hover:text-blue-600"></i>
                                 <span class="text-gray-700 group-hover:text-gray-900">{{ __('Profil Saya') }}</span>
@@ -191,7 +190,7 @@
 
             <!-- Menu Items -->
             <div class="space-y-2">
-                <x-responsive-nav-link :href="route('profile.edit')"
+                <x-responsive-nav-link :href="route('pasien.profile')"
                     class="text-white hover:bg-white/10 rounded-xl px-4 py-3 flex items-center space-x-3 transition-all duration-300 border border-transparent hover:border-white/20">
                     <i class="fas fa-user text-blue-200"></i>
                     <span>{{ __('Profil') }}</span>
