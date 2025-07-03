@@ -7,6 +7,7 @@ use Xendit\Xendit;
 use Xendit\Invoice;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth; // Import Auth facade
 use Xendit\Exceptions\ApiException;
 
 class XenditService
@@ -26,10 +27,12 @@ class XenditService
     {
         $externalId = 'EXAM-' . $examination->id . '-INV-' . Carbon::now()->format('YmdHis') . '-' . uniqid();
 
-        // Get base URL based on user role
-        $user = auth()->user();
+        // Get authenticated user - gunakan Auth::user() dengan huruf kapital
+        $user = Auth::user();
+        // Check if user is authenticated
+        
         $baseUrl = $this->getBaseUrlByRole($user);
-
+        
         $params = [
             'external_id' => $externalId,
             'amount' => (int) $examination->serviceItem->price,
@@ -57,15 +60,18 @@ class XenditService
             throw $e;
         }
     }
+
     private function getBaseUrlByRole($user)
     {
-        if (!$user) return '';
+        if (!$user) {
+            return '/pasien';
+        }
 
         return match ($user->role) {
             'admin' => '/staff',
             'cs', 'customer_service' => '/staff',
             'pasien' => '/pasien',
-            default => ''
+            default => '/pasien'
         };
     }
 }
